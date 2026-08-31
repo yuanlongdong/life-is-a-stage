@@ -1,994 +1,160 @@
-/**
- * 《人生如戏》样式表
- * Life is a Stage - Stylesheet
- */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
+/* === 人生岔路事件样式 === */
+.life-choice-modal {
+  border: 2px solid #C9A7E8;
+  background: linear-gradient(135deg, #faf8ff 0%, #ffffff 100%);
 }
-:root {
-  --primary: #6C5CE7;
-  --primary-light: #A29BFE;
-  --secondary: #FD79A8;
-  --success: #00B894;
-  --warning: #FDCB6E;
-  --danger: #E17055;
-  --info: #74B9FF;
-  --text-primary: #2D3436;
-  --text-secondary: #636E72;
-  --text-light: #B2BEC3;
-  --bg-primary: #F8F9FA;
-  --bg-card: #FFFFFF;
-  --border: #DFE6E9;
-  --shadow: 0 2px 8px rgba(0,0,0,0.08);
-  --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
-  --radius: 12px;
-  --radius-sm: 8px;
-}
-html, body {
-  height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  font-size: 14px;
-  color: var(--text-primary);
-  background: var(--bg-primary);
-  overflow-x: hidden;
-}
-#app {
-  max-width: 480px;
-  margin: 0 auto;
-  min-height: 100vh;
-  background: var(--bg-primary);
-  position: relative;
-}
-.loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  gap: 16px;
-}
-.loading-icon {
-  font-size: 64px;
-  animation: bounce 1.5s infinite;
-}
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-/* === 通用按钮 === */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 24px;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  width: 100%;
-}
-.btn:active {
-  transform: scale(0.98);
-}
-.btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+
+.life-choice-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #C9A7E8, #9BBBF4);
   color: white;
-  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
-}
-.btn-secondary {
-  background: var(--bg-card);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-}
-.btn-tertiary {
-  background: transparent;
-  color: var(--text-secondary);
-}
-.btn-back {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 14px;
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-}
-.btn-back:active {
-  background: var(--border);
-}
-/* === 主菜单 === */
-.menu-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 32px;
-  background: linear-gradient(180deg, #6C5CE7 0%, #A29BFE 50%, #F8F9FA 100%);
-}
-.game-title {
-  text-align: center;
-  margin-bottom: 60px;
-}
-.title-icon {
-  font-size: 80px;
-  margin-bottom: 16px;
-  animation: float 3s ease-in-out infinite;
-}
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-.game-title h1 {
-  font-size: 42px;
-  font-weight: 800;
-  color: white;
-  letter-spacing: 4px;
-  margin-bottom: 8px;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-.subtitle {
-  font-size: 15px;
-  color: rgba(255,255,255,0.9);
-  letter-spacing: 2px;
-}
-.menu-buttons {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.menu-buttons .btn {
-  padding: 16px 24px;
-  font-size: 16px;
-}
-.menu-footer {
-  position: absolute;
-  bottom: 32px;
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-/* === 剧本选择 === */
-.scenario-screen {
-  padding: 16px;
-  min-height: 100vh;
-}
-.screen-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 20px;
-  padding: 8px 0;
-}
-.screen-header h2 {
-  font-size: 20px;
-  font-weight: 700;
-  flex: 1;
-}
-.scenario-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.scenario-card {
-  background: var(--bg-card);
-  border-radius: var(--radius);
-  padding: 16px;
-  display: flex;
-  gap: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: var(--shadow);
-  border: 2px solid transparent;
-}
-.scenario-card:active {
-  transform: scale(0.98);
-  border-color: var(--primary);
-}
-.scenario-icon {
-  font-size: 40px;
-  flex-shrink: 0;
-}
-.scenario-info {
-  flex: 1;
-  min-width: 0;
-}
-.scenario-info h3 {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.difficulty {
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-weight: 500;
-}
-.difficulty-简单 { background: #D6F5E3; color: #00B894; }
-.difficulty-普通 { background: #FFF3CD; color: #E1A100; }
-.difficulty-困难 { background: #FFE0E0; color: #E17055; }
-.difficulty-地狱 { background: #2D3436; color: #FFF; }
-.scenario-desc {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 8px;
-}
-.scenario-stats {
-  display: flex;
-  gap: 12px;
-  font-size: 11px;
-  color: var(--text-light);
-}
-/* === 游戏主界面 === */
-.game-screen {
-  padding-bottom: 20px;
-}
-.top-bar {
-  background: linear-gradient(135deg, var(--primary), var(--primary-light));
-  padding: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: white;
-}
-.player-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.player-avatar {
-  font-size: 32px;
-  background: rgba(255,255,255,0.2);
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.player-name {
-  font-size: 15px;
-  font-weight: 700;
-}
-.player-time {
-  font-size: 12px;
-  opacity: 0.9;
-}
-.net-worth {
-  text-align: right;
-}
-.nw-label {
-  font-size: 11px;
-  opacity: 0.9;
-}
-.nw-value {
-  font-size: 20px;
-  font-weight: 800;
-}
-.nw-value.positive { color: #7BED9F; }
-.nw-value.negative { color: #FFB8B8; }
-/* 属性条 */
-.stats-bar {
-  background: var(--bg-card);
-  padding: 12px 16px;
-  display: flex;
-  gap: 8px;
-  box-shadow: var(--shadow);
-}
-.stat-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-.stat-icon {
-  font-size: 14px;
-}
-.stat-bar {
-  width: 100%;
-  height: 6px;
-  background: var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.stat-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
-.stat-fill.health { background: #E17055; }
-.stat-fill.happiness { background: #FDCB6E; }
-.stat-fill.network { background: #74B9FF; }
-.stat-fill.knowledge { background: #A29BFE; }
-.stat-value {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-/* 财务阶段 */
-.financial-stage {
-  margin: 12px 16px;
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 600;
-}
-.stage-progress {
-  font-size: 11px;
-  font-weight: 400;
-}
-/* 现金流面板 */
-.cashflow-panel {
-  margin: 0 16px 12px;
-  background: var(--bg-card);
-  border-radius: var(--radius);
-  padding: 16px;
-  box-shadow: var(--shadow);
-}
-.cashflow-panel h3 {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-.cf-section {
-  margin-bottom: 12px;
-}
-.cf-section-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-.cf-bar-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.cf-bar-label {
-  font-size: 11px;
-  color: var(--text-secondary);
-  width: 32px;
-  flex-shrink: 0;
-}
-.cf-bar {
-  flex: 1;
-  height: 12px;
-  background: var(--bg-primary);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.cf-bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
-.cf-bar-value {
-  font-size: 11px;
-  font-weight: 600;
-  width: 56px;
-  text-align: right;
-  flex-shrink: 0;
-}
-.cf-total {
-  display: flex;
-  justify-content: space-between;
-  padding-top: 8px;
-  border-top: 1px dashed var(--border);
-  font-size: 13px;
-  font-weight: 700;
-}
-.income-total { color: var(--success); }
-.expense-total { color: var(--danger); }
-.cf-balance {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  margin-top: 8px;
-  font-size: 14px;
-  font-weight: 700;
-}
-.cf-balance.positive {
-  background: rgba(0, 184, 148, 0.1);
-  color: var(--success);
-}
-.cf-balance.negative {
-  background: rgba(225, 112, 85, 0.1);
-  color: var(--danger);
-}
-/* 学习队列 */
-.learning-queue {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.queue-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-.learning-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  font-size: 12px;
-}
-.learning-item span:first-child {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.progress-bar {
-  flex: 1;
-  height: 6px;
-  background: var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-  max-width: 100px;
-}
-.progress-fill {
-  height: 100%;
-  background: var(--primary);
-  border-radius: 3px;
-}
-.progress-text {
-  font-size: 10px;
-  color: var(--text-light);
-  width: 32px;
-  text-align: right;
-}
-/* 资产负债 */
-.assets-liabilities {
-  display: flex;
-  gap: 8px;
-  margin: 0 16px 12px;
-}
-.al-item {
-  flex: 1;
-  background: var(--bg-card);
-  border-radius: var(--radius-sm);
-  padding: 10px;
-  text-align: center;
-  box-shadow: var(--shadow);
-}
-.al-label {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-bottom: 4px;
-}
-.al-value {
-  font-size: 14px;
-  font-weight: 700;
-}
-.al-item.assets .al-value { color: var(--success); }
-.al-item.liabilities .al-value { color: var(--danger); }
-.al-item.passive .al-value { color: var(--info); }
-/* 功能按钮 */
-.action-buttons {
-  display: flex;
-  gap: 8px;
-  margin: 0 16px 12px;
-}
-.action-btn {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 14px 8px;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.action-btn:active {
-  transform: scale(0.95);
-}
-.action-icon {
-  font-size: 22px;
-}
-.skill-btn { background: rgba(162, 155, 254, 0.15); color: var(--primary); }
-.invest-btn { background: rgba(0, 184, 148, 0.15); color: var(--success); }
-.next-btn { background: rgba(253, 121, 168, 0.15); color: var(--secondary); }
-/* 事件日志 */
-.event-log {
-  margin: 0 16px;
-  background: var(--bg-card);
-  border-radius: var(--radius);
-  padding: 14px;
-  box-shadow: var(--shadow);
-  max-height: 200px;
-  overflow-y: auto;
-}
-.log-title {
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: var(--text-primary);
-}
-.log-content {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.log-item {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  padding-left: 8px;
-  border-left: 2px solid var(--border);
-}
-/* === 技能树界面 === */
-.skill-screen {
-  padding-bottom: 20px;
-}
-.skill-money {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--success);
-}
-.skill-categories {
-  display: flex;
-  gap: 6px;
-  padding: 0 16px;
-  margin-bottom: 12px;
-  overflow-x: auto;
-}
-.skill-tab {
-  flex-shrink: 0;
-  padding: 8px 14px;
-  border: 2px solid var(--border);
-  background: var(--bg-card);
+  padding: 6px 16px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
 }
-.skill-tab.active {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
-}
-.skill-category-info {
-  margin: 0 16px 16px;
-  padding: 10px 14px;
-  background: var(--bg-card);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  gap: 10px;
+
+.life-choice-warning {
   font-size: 12px;
+  color: #8B5CF6;
+  margin-bottom: 16px;
+  font-style: italic;
 }
-.cat-desc {
-  flex: 1;
-  color: var(--text-secondary);
-}
-.cat-level {
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.skill-section {
-  margin: 0 16px 16px;
-}
-.skill-section h3 {
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 10px;
-  color: var(--text-primary);
-}
-.skill-list {
+
+.event-choice.life-choice {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.skill-card {
-  background: var(--bg-card);
-  border-radius: var(--radius);
-  padding: 14px;
-  box-shadow: var(--shadow);
-  border: 2px solid transparent;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  text-align: left;
+  background: white;
+  border: 1.5px solid #E4E3DD;
   transition: all 0.2s ease;
 }
-.skill-card.learned {
-  opacity: 0.7;
-  border-color: var(--success);
+
+.event-choice.life-choice:hover:not(:disabled) {
+  border-color: #C9A7E8;
+  background: #faf8ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(201, 167, 232, 0.2);
 }
-.skill-header {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-.skill-icon {
+
+.lc-icon {
   font-size: 28px;
   flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f3ff;
+  border-radius: 10px;
 }
-.skill-info {
+
+.lc-content {
   flex: 1;
   min-width: 0;
 }
-.skill-name {
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.skill-level {
-  font-size: 11px;
-  color: var(--primary);
-  font-weight: 600;
-}
-.skill-desc {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.4;
-  margin-bottom: 6px;
-}
-.level-dots {
-  display: flex;
-  gap: 4px;
-}
-.level-dot {
-  width: 16px;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--border);
-}
-.skill-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-}
-.skill-cost {
-  display: flex;
-  gap: 10px;
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-.btn-skill {
-  padding: 6px 14px;
-  border: none;
-  border-radius: 16px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.btn-skill:active {
-  transform: scale(0.95);
-}
-.btn-learn { background: var(--primary); color: white; }
-.btn-develop { background: var(--secondary); color: white; }
-.btn-done { background: var(--success); color: white; }
-.btn-learning { background: var(--warning); color: var(--text-primary); }
-.btn-disabled { background: var(--border); color: var(--text-light); cursor: not-allowed; }
-/* === 投资界面 === */
-.invest-screen {
-  padding-bottom: 20px;
-}
-.invest-overview {
-  display: flex;
-  gap: 8px;
-  margin: 0 16px 16px;
-}
-.io-item {
-  flex: 1;
-  background: var(--bg-card);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  text-align: center;
-  box-shadow: var(--shadow);
-}
-.io-label {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-bottom: 4px;
-}
-.io-value {
+
+.lc-title {
   font-size: 15px;
-  font-weight: 700;
-  color: var(--success);
-}
-.io-value.negative {
-  color: var(--danger);
-}
-.invest-section {
-  margin: 0 16px 16px;
-}
-.invest-section h3 {
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-.invest-options {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.invest-card {
-  background: var(--bg-card);
-  border-radius: var(--radius);
-  padding: 14px;
-  box-shadow: var(--shadow);
-}
-.invest-card.locked {
-  opacity: 0.6;
-}
-.invest-header {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 10px;
-}
-.invest-icon {
-  font-size: 28px;
-}
-.invest-name {
-  font-size: 14px;
-  font-weight: 700;
-}
-.invest-desc {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-.invest-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.btn-invest, .btn-withdraw, .btn-repay {
-  flex: 1;
-  min-width: 80px;
-  padding: 8px 12px;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.btn-invest { background: rgba(0, 184, 148, 0.15); color: var(--success); }
-.btn-withdraw { background: rgba(116, 185, 255, 0.15); color: var(--info); }
-.btn-repay { background: rgba(225, 112, 85, 0.15); color: var(--danger); }
-.btn-invest:active, .btn-withdraw:active, .btn-repay:active {
-  transform: scale(0.95);
-}
-.btn-invest:disabled, .btn-repay:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.debt-info {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
-}
-/* === 事件弹窗 === */
-.event-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  animation: fadeIn 0.3s ease;
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-.event-modal {
-  background: var(--bg-card);
-  border-radius: var(--radius);
-  padding: 24px;
-  max-width: 380px;
-  width: 100%;
-  text-align: center;
-  animation: slideUp 0.3s ease;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-.event-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-}
-.event-title {
-  font-size: 20px;
-  font-weight: 800;
-  margin-bottom: 12px;
-  color: var(--text-primary);
-}
-.event-desc {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin-bottom: 20px;
-}
-.event-choices {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.event-choice {
-  padding: 14px 16px;
-  border: 2px solid var(--border);
-  background: var(--bg-card);
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: left;
-}
-.event-choice:active {
-  transform: scale(0.98);
-  border-color: var(--primary);
-  background: rgba(108, 92, 231, 0.05);
-}
-.event-choice.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-/* 年度回顾 */
-.year-review .year-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-.ys-item {
-  background: var(--bg-primary);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  text-align: center;
-}
-.ys-label {
-  font-size: 11px;
-  color: var(--text-secondary);
+  color: #1A1B1C;
   margin-bottom: 4px;
 }
-.ys-value {
+
+.lc-desc {
+  font-size: 12px;
+  color: #6B7280;
+  line-height: 1.5;
+}
+
+/* === 平行人生钩子样式 === */
+.parallel-hooks-section {
+  margin: 20px 0;
+  padding: 16px;
+  background: linear-gradient(135deg, #fef9ff 0%, #f5f3ff 100%);
+  border-radius: 12px;
+  border: 1px solid #E9D5FF;
+}
+
+.ph-title {
   font-size: 16px;
-  font-weight: 800;
-}
-.ys-value.positive { color: var(--success); }
-.ys-value.negative { color: var(--danger); }
-/* === 游戏结束 === */
-.gameover-screen {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px;
-  background: linear-gradient(180deg, #2D3436 0%, #636E72 100%);
-}
-.gameover-content {
+  font-weight: 700;
+  color: #7C3AED;
   text-align: center;
-  color: white;
-  width: 100%;
-}
-.gameover-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-}
-.gameover-content h2 {
-  font-size: 32px;
-  font-weight: 800;
-  margin-bottom: 8px;
-}
-.gameover-reason {
-  font-size: 14px;
-  opacity: 0.8;
-  margin-bottom: 24px;
-}
-.ending-card {
-  background: rgba(255,255,255,0.1);
-  border-radius: var(--radius);
-  padding: 20px;
-  margin-bottom: 24px;
-  backdrop-filter: blur(10px);
-}
-.ending-name {
-  font-size: 20px;
-  font-weight: 800;
-  margin-bottom: 8px;
-  color: var(--warning);
-}
-.ending-desc {
-  font-size: 13px;
-  line-height: 1.6;
-  opacity: 0.9;
-}
-.final-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 24px;
-}
-.fs-item {
-  background: rgba(255,255,255,0.1);
-  border-radius: var(--radius-sm);
-  padding: 14px;
-}
-.fs-label {
-  font-size: 11px;
-  opacity: 0.7;
   margin-bottom: 4px;
 }
-.fs-value {
-  font-size: 18px;
-  font-weight: 800;
+
+.ph-subtitle {
+  font-size: 13px;
+  color: #A78BFA;
+  text-align: center;
+  margin-bottom: 16px;
+  font-style: italic;
 }
-.gameover-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+
+.parallel-hook {
+  position: relative;
+  padding: 12px 16px 12px 28px;
+  margin-bottom: 10px;
+  background: white;
+  border-radius: 8px;
+  border-left: 3px solid #C9A7E8;
 }
-.gameover-actions .btn {
-  padding: 14px;
+
+.parallel-hook:last-child {
+  margin-bottom: 0;
 }
-/* === 滚动条 === */
-::-webkit-scrollbar {
-  width: 4px;
+
+.ph-quote {
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  font-size: 24px;
+  color: #C9A7E8;
+  font-family: Georgia, serif;
+  line-height: 1;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+.ph-text {
+  font-size: 13px;
+  color: #4B5563;
+  line-height: 1.6;
+  font-style: italic;
 }
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 2px;
+
+.ph-cta {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #7C3AED;
+  animation: pulse 2s ease-in-out infinite;
 }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 /* === 响应式 === */
 @media (max-width: 360px) {
   .game-title h1 {
     font-size: 36px;
   }
+
   .scenario-stats {
     flex-wrap: wrap;
     gap: 6px;
   }
+
   .invest-actions {
     flex-direction: column;
   }
+
   .btn-invest, .btn-withdraw, .btn-repay {
     width: 100%;
   }
