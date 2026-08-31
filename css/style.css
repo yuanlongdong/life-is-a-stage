@@ -106,6 +106,7 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .action-icon { font-size: 22px; }
 .skill-btn { background: rgba(162, 155, 254, 0.15); color: var(--primary); }
 .invest-btn { background: rgba(0, 184, 148, 0.15); color: var(--success); }
+.relationship-btn { background: rgba(253, 121, 168, 0.15); color: var(--secondary); }
 .next-btn { background: rgba(253, 121, 168, 0.15); color: var(--secondary); }
 .event-log { margin: 0 16px; background: var(--bg-card); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); max-height: 200px; overflow-y: auto; }
 .log-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary); }
@@ -287,3 +288,314 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .achievement-info { flex: 1; min-width: 0; }
 .achievement-name { font-size: 13px; font-weight: 600; color: #1A1B1C; margin-bottom: 2px; }
 .achievement-desc { font-size: 11px; color: #6B7280; line-height: 1.4; }
+
+/* ===== 人际关系界面 ===== */
+.relationships-screen {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f0f4ff 0%, #faf5ff 100%);
+  padding: 16px;
+  padding-bottom: 100px;
+}
+
+.social-overview {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.social-score {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.score-label {
+  font-size: 12px;
+  color: #6B7280;
+  margin-bottom: 4px;
+}
+
+.score-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #7C3AED;
+  margin-bottom: 8px;
+}
+
+.score-bar {
+  width: 100%;
+  height: 8px;
+  background: #E5E7EB;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.score-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #EAA7B2, #7C3AED);
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+.social-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.stat-icon {
+  font-size: 16px;
+}
+
+.relationship-section {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.relationship-section h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1A1B1C;
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-count {
+  font-size: 12px;
+  color: #6B7280;
+  font-weight: 400;
+}
+
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.friend-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #F9FAFB;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+}
+
+.friend-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.friend-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1A1B1C;
+  margin-bottom: 2px;
+}
+
+.friend-occupation {
+  font-size: 11px;
+  color: #6B7280;
+  font-weight: 400;
+}
+
+.friend-meta {
+  font-size: 11px;
+  color: #9CA3AF;
+}
+
+.friend-relationship {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 80px;
+}
+
+.relationship-bar {
+  flex: 1;
+  height: 6px;
+  background: #E5E7EB;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.relationship-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.relationship-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6B7280;
+  min-width: 20px;
+  text-align: right;
+}
+
+.btn-contact, .btn-date, .btn-propose, .btn-divorce, .btn-educate, .btn-accompany {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.btn-contact {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.btn-contact:hover {
+  background: #BFDBFE;
+}
+
+.btn-date {
+  background: #FCE7F3;
+  color: #BE185D;
+}
+
+.btn-propose {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+.btn-divorce {
+  background: #FEE2E2;
+  color: #B91C1C;
+}
+
+.btn-educate {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.btn-accompany {
+  background: #FCE7F3;
+  color: #BE185D;
+}
+
+.partner-card {
+  padding: 16px;
+  background: linear-gradient(135deg, #FDF2F8, #FAF5FF);
+  border-radius: 12px;
+  border: 1px solid #FBCFE8;
+}
+
+.partner-header {
+  margin-bottom: 12px;
+}
+
+.partner-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1A1B1C;
+  margin-bottom: 4px;
+}
+
+.partner-status {
+  font-size: 12px;
+  color: #DB2777;
+  font-weight: 500;
+}
+
+.partner-occupation {
+  font-size: 12px;
+  color: #6B7280;
+}
+
+.partner-relationship {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.partner-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.children-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.child-card {
+  padding: 12px;
+  background: #F0FDF4;
+  border-radius: 12px;
+  border: 1px solid #BBF7D0;
+}
+
+.child-info {
+  margin-bottom: 10px;
+}
+
+.child-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1A1B1C;
+  margin-bottom: 2px;
+}
+
+.child-gender {
+  font-size: 11px;
+  color: #6B7280;
+  font-weight: 400;
+}
+
+.child-meta {
+  font-size: 12px;
+  color: #166534;
+}
+
+.child-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.child-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #6B7280;
+  min-width: 50px;
+}
+
+.child-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 24px;
+  color: #9CA3AF;
+  font-size: 13px;
+}
