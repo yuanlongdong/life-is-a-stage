@@ -11,7 +11,8 @@ const GamePhase = {
   INVEST: 'invest',
   GAME_OVER: 'game_over',
   YEAR_REVIEW: 'year_review',
-  COLLECTION: 'collection'
+  COLLECTION: 'collection',
+  LAST_GAME_REVIEW: 'last_game_review'
 };
 
 class GameState {
@@ -48,6 +49,16 @@ class GameState {
     this.player.addEventLog(`🎬 人生大幕拉开！你以【${scenario.name}】的身份开始了新的人生。`);
     this.player.addEventLog(`💡 ${scenario.tips}`);
 
+    // 【P1记忆继承】如果有上一局数据且记忆等级>=1，先显示上一局回顾
+    if (typeof CollectionManager !== 'undefined' &&
+        CollectionManager.hasLastGame() &&
+        CollectionManager.getMemoryLevel() >= 1) {
+      this.lastGameSummary = CollectionManager.getLastGameSummary();
+      this.memoryLevel = CollectionManager.getMemoryLevel();
+      this.phase = GamePhase.LAST_GAME_REVIEW;
+      return this.player;
+    }
+
     const initialLifeChoice = LIFE_CHOICES[this.player.age];
     if (initialLifeChoice && !this.player.lifeChoices[this.player.age]) {
       this.pendingEvent = initialLifeChoice;
@@ -57,12 +68,20 @@ class GameState {
     return this.player;
   }
 
+  // 【P1记忆继承】从上一局回顾继续游戏
+  continueAfterLastGameReview() {
+    this.phase = GamePhase.PLAYING;
+    const initialLifeChoice = LIFE_CHOICES[this.player.age];
+    if (initialLifeChoice && !this.player.lifeChoices[this.player.age]) {
+      this.pendingEvent = initialLifeChoice;
+      this.phase = GamePhase.EVENT;
+    }
+  }
+
   advanceMonth() {
     if (!this.player || this.phase !== GamePhase.PLAYING) return null;
-
     const month = this.currentMonth;
     const year = this.currentYear;
-
     const income = this.player.getMonthlyIncome();
     const expense = this.player.getMonthlyExpense();
     const balance = income.total - expense.total;
@@ -75,7 +94,6 @@ class GameState {
 
     const investGain = Math.round(this.player.investments * (0.006 + this.player.modifiers.investmentReturnBonus / 12));
     this.player.investments += investGain;
-
     this.processLearningQueue();
 
     if (this.player.careerDelayMonths > 0) {
@@ -120,13 +138,9 @@ class GameState {
     const completed = [];
     this.player.learningQueue = this.player.learningQueue.filter(item => {
       item.remainingMonths--;
-      if (item.remainingMonths <= 0) {
-        completed.push(item);
-        return false;
-      }
+      if (item.remainingMonths <= 0) { completed.push(item); return false; }
       return true;
     });
-
     completed.forEach(item => {
       if (item.type === 'learn') {
         const skill = LEARNABLE_SKILLS[item.skillId];
@@ -135,7 +149,6 @@ class GameState {
           this.player.skillLevels[skill.category] = (this.player.skillLevels[skill.category] || 0) + 1;
           const applied = this.player.applyEffects(skill.effects);
           this.player.addEventLog(`📖 学习完成【${skill.name}】：${applied.join('，')}`);
-          this.addNotification(`🎉 学会了新技能：${skill.name}`);
         }
       } else if (item.type === 'develop') {
         const skill = DEVELOPABLE_SKILLS[item.skillId];
@@ -148,7 +161,6 @@ class GameState {
             const applied = this.player.applyEffects(skill.effectsPerLevel);
             this.player.addEventLog(`⬆️ 【${skill.name}】升级到 Lv.${newLevel}：${applied.join('，')}`);
           }
-          this.addNotification(`⭐ 技能升级：${skill.name} Lv.${newLevel}`);
         }
       }
     });
@@ -179,12 +191,8 @@ class GameState {
   }
 
   checkGameOver() {
-    if (this.player.health <= 0) {
-      return { reason: 'death', message: '你的健康耗尽了，人生谢幕。' };
-    }
-    if (this.player.age >= 80) {
-      return { reason: 'age', message: '你活到了80岁，人生圆满。' };
-    }
+    if (this.player.health <= 0) return { reason: 'death', message: '你的健康耗尽了，人生谢幕。' };
+    if (this.player.age >= 80) return { reason: 'age', message: '你活到了80岁，人生圆满。' };
     if (this.player.monthlyHistory.length >= 3) {
       const recent = this.player.monthlyHistory.slice(-3);
       const allNegative = recent.every(h => h.balance < 0);
@@ -197,20 +205,14 @@ class GameState {
 
   checkForEvent() {
     const lifeChoice = LIFE_CHOICES[this.player.age];
-    if (lifeChoice && this.currentMonth === 1) {
-      if (!this.player.lifeChoices[this.player.age]) {
-        return lifeChoice;
-      }
+    if (lifeChoice && this.currentMonth === 1 && !this.player.lifeChoices[this.player.age]) {
+      return lifeChoice;
     }
-
     const milestone = MILESTONE_EVENTS[this.player.age];
     if (milestone && this.currentMonth === 1) {
       const triggered = this.player.eventLog.some(log => log.text.includes(milestone[0].name));
-      if (!triggered) {
-        return milestone[0];
-      }
+      if (!triggered) return milestone[0];
     }
-
     if (Math.random() < 0.30) {
       const eligibleEvents = EVENTS.filter(event => {
         if (!event.triggerCondition) return true;
@@ -226,7 +228,6 @@ class GameState {
         if (cond.isMarried !== undefined && cond.isMarried !== this.player.isMarried) return false;
         return true;
       });
-
       if (eligibleEvents.length > 0) {
         const totalProb = eligibleEvents.reduce((sum, e) => sum + (e.probability || 0.1), 0);
         let rand = Math.random() * totalProb;
@@ -244,54 +245,25 @@ class GameState {
     if (!this.pendingEvent) return null;
     const choice = this.pendingEvent.choices[choiceIndex];
     if (!choice) return null;
-
     if (choice.requirement) {
       const req = choice.requirement;
-      if (req.minNetwork && this.player.network < req.minNetwork) {
-        return { success: false, message: '人脉不足，无法选择此项。' };
-      }
-      if (req.minSavings && this.player.savings < req.minSavings) {
-        return { success: false, message: '储蓄不足，无法选择此项。' };
-      }
+      if (req.minNetwork && this.player.network < req.minNetwork) return { success: false, message: '人脉不足，无法选择此项。' };
+      if (req.minSavings && this.player.savings < req.minSavings) return { success: false, message: '储蓄不足，无法选择此项。' };
     }
-
     if (this.pendingEvent.isLifeChoice) {
       const age = this.pendingEvent.age;
       this.player.lifeChoices[age] = choice.id;
-      this.player.lifeChoiceHistory.push({
-        age: age,
-        choiceId: choice.id,
-        choiceName: choice.shortName || choice.text,
-        month: this.currentMonth,
-        year: this.currentYear
-      });
+      this.player.lifeChoiceHistory.push({ age: age, choiceId: choice.id, choiceName: choice.shortName || choice.text, month: this.currentMonth, year: this.currentYear });
       if (choice.unlocks) {
-        choice.unlocks.forEach(route => {
-          if (this.player.lifeRoutes.hasOwnProperty(route)) {
-            this.player.lifeRoutes[route] = true;
-          }
-        });
+        choice.unlocks.forEach(route => { if (this.player.lifeRoutes.hasOwnProperty(route)) this.player.lifeRoutes[route] = true; });
       }
-      if (choice.longTermEffects) {
-        this.applyLongTermEffects(choice.longTermEffects);
-      }
-      if (choice.midTermEffects) {
-        this.applyLongTermEffects(choice.midTermEffects);
-      }
+      if (choice.longTermEffects) this.applyLongTermEffects(choice.longTermEffects);
+      if (choice.midTermEffects) this.applyLongTermEffects(choice.midTermEffects);
       this.player.addEventLog(`🚦 【人生岔路·${age}岁】你选择了「${choice.shortName || choice.text}」。这个选择将改变你接下来的人生轨迹。`);
     }
-
     const applied = this.player.applyEffects(choice.effects || choice.immediateEffects || {});
     this.player.addEventLog(`${this.pendingEvent.icon} ${this.pendingEvent.name}：${choice.resultText || choice.text}`);
-
-    const result = {
-      success: true,
-      event: this.pendingEvent,
-      choice,
-      applied,
-      resultText: choice.resultText
-    };
-
+    const result = { success: true, event: this.pendingEvent, choice, applied, resultText: choice.resultText };
     this.pendingEvent = null;
     this.phase = GamePhase.PLAYING;
     return result;
@@ -300,41 +272,21 @@ class GameState {
   applyLongTermEffects(effects) {
     if (!effects) return;
     const p = this.player;
-    if (effects.careerLine) {
-      p.careerLine = effects.careerLine;
-    }
-    if (effects.salaryGrowthMultiplier) {
-      p.modifiers.salaryGrowthMultiplier = (p.modifiers.salaryGrowthMultiplier || 1) * effects.salaryGrowthMultiplier;
-    }
-    if (effects.salaryCapMultiplier) {
-      p.modifiers.salaryCapMultiplier = (p.modifiers.salaryCapMultiplier || 1) * effects.salaryCapMultiplier;
-    }
-    if (effects.investmentReturnMultiplier) {
-      p.modifiers.investmentReturnBonus = (p.modifiers.investmentReturnBonus || 0) + (effects.investmentReturnMultiplier - 1);
-    }
-    if (effects.sideIncomeGrowthMultiplier) {
-      p.modifiers.sideIncomeGrowthMultiplier = (p.modifiers.sideIncomeGrowthMultiplier || 1) * effects.sideIncomeGrowthMultiplier;
-    }
-    if (effects.happinessCapBonus) {
-      p.modifiers.happinessCapBonus = (p.modifiers.happinessCapBonus || 0) + effects.happinessCapBonus;
-    }
-    if (effects.hasHouse) {
-      p.hasHouse = true;
-    }
-    if (effects.startupEndingPossible) {
-      p.canGetStartupEnding = true;
-    }
-    if (effects.familyEndingPossible) {
-      p.canGetFamilyEnding = true;
-    }
+    if (effects.careerLine) p.careerLine = effects.careerLine;
+    if (effects.salaryGrowthMultiplier) p.modifiers.salaryGrowthMultiplier = (p.modifiers.salaryGrowthMultiplier || 1) * effects.salaryGrowthMultiplier;
+    if (effects.salaryCapMultiplier) p.modifiers.salaryCapMultiplier = (p.modifiers.salaryCapMultiplier || 1) * effects.salaryCapMultiplier;
+    if (effects.investmentReturnMultiplier) p.modifiers.investmentReturnBonus = (p.modifiers.investmentReturnBonus || 0) + (effects.investmentReturnMultiplier - 1);
+    if (effects.sideIncomeGrowthMultiplier) p.modifiers.sideIncomeGrowthMultiplier = (p.modifiers.sideIncomeGrowthMultiplier || 1) * effects.sideIncomeGrowthMultiplier;
+    if (effects.happinessCapBonus) p.modifiers.happinessCapBonus = (p.modifiers.happinessCapBonus || 0) + effects.happinessCapBonus;
+    if (effects.hasHouse) p.hasHouse = true;
+    if (effects.startupEndingPossible) p.canGetStartupEnding = true;
+    if (effects.familyEndingPossible) p.canGetFamilyEnding = true;
     if (effects.delayedCareer) {
       p.careerDelayMonths = effects.delayedCareer;
       p.careerDelayApplied = false;
       p.addEventLog(`📚 职业开始延迟${effects.delayedCareer}个月，期间无工资收入。`);
     }
-    if (effects.salaryStartMultiplier) {
-      p.salaryStartMultiplier = effects.salaryStartMultiplier;
-    }
+    if (effects.salaryStartMultiplier) p.salaryStartMultiplier = effects.salaryStartMultiplier;
   }
 
   learnSkill(skillId) {
@@ -344,17 +296,10 @@ class GameState {
     if (!this.player.checkPrerequisite(skill)) return { success: false, message: '前置技能未满足' };
     if (!this.player.checkPrerequisiteCondition(skill)) return { success: false, message: '条件未满足' };
     if (this.player.savings < skill.cost) return { success: false, message: '金钱不足' };
-    if (this.player.learningQueue.some(q => q.skillId === skillId)) {
-      return { success: false, message: '正在学习中' };
-    }
+    if (this.player.learningQueue.some(q => q.skillId === skillId)) return { success: false, message: '正在学习中' };
     this.player.savings -= skill.cost;
     const duration = Math.max(1, Math.round(skill.duration / this.player.modifiers.learningSpeedMultiplier));
-    this.player.learningQueue.push({
-      skillId,
-      type: 'learn',
-      remainingMonths: duration,
-      totalMonths: duration
-    });
+    this.player.learningQueue.push({ skillId, type: 'learn', remainingMonths: duration, totalMonths: duration });
     this.player.addEventLog(`📚 开始学习【${skill.name}】，预计${duration}个月完成。`);
     return { success: true, message: `开始学习${skill.name}`, duration };
   }
@@ -365,17 +310,10 @@ class GameState {
     const currentLevel = this.player.developedSkills[skillId] || 0;
     if (currentLevel >= skill.maxLevel) return { success: false, message: '已满级' };
     if (this.player.savings < skill.costPerLevel) return { success: false, message: '金钱不足' };
-    if (this.player.learningQueue.some(q => q.skillId === skillId)) {
-      return { success: false, message: '正在升级中' };
-    }
+    if (this.player.learningQueue.some(q => q.skillId === skillId)) return { success: false, message: '正在升级中' };
     this.player.savings -= skill.costPerLevel;
     const duration = Math.max(1, Math.round(skill.durationPerLevel / this.player.modifiers.learningSpeedMultiplier));
-    this.player.learningQueue.push({
-      skillId,
-      type: 'develop',
-      remainingMonths: duration,
-      totalMonths: duration
-    });
+    this.player.learningQueue.push({ skillId, type: 'develop', remainingMonths: duration, totalMonths: duration });
     this.player.addEventLog(`⬆️ 开始升级【${skill.name}】到 Lv.${currentLevel + 1}，预计${duration}个月。`);
     return { success: true, message: `开始升级${skill.name}`, duration };
   }
@@ -409,22 +347,17 @@ class GameState {
 
   addNotification(message) {
     this.notifications.unshift({ message, time: Date.now() });
-    if (this.notifications.length > 10) {
-      this.notifications = this.notifications.slice(0, 10);
-    }
+    if (this.notifications.length > 10) this.notifications = this.notifications.slice(0, 10);
   }
 
   getFinancialStage() {
     const monthlyExpense = this.player.getMonthlyExpense().total;
     const emergencyFund = this.player.savings;
     const passive = this.player.passiveIncome + Math.round(this.player.investments * 0.006);
-    if (emergencyFund >= monthlyExpense * 6 && passive >= monthlyExpense) {
-      return { stage: 'financial_freedom', name: '财务自由', color: '#52C41A' };
-    } else if (emergencyFund >= monthlyExpense * 6 && passive >= monthlyExpense * 0.5) {
-      return { stage: 'financial_stability', name: '财务稳定', color: '#8BC8EA' };
-    } else if (emergencyFund >= monthlyExpense * 6) {
-      return { stage: 'financial_security', name: '财务安全', color: '#A2DDAA' };
-    } else {
+    if (emergencyFund >= monthlyExpense * 6 && passive >= monthlyExpense) return { stage: 'financial_freedom', name: '财务自由', color: '#52C41A' };
+    else if (emergencyFund >= monthlyExpense * 6 && passive >= monthlyExpense * 0.5) return { stage: 'financial_stability', name: '财务稳定', color: '#8BC8EA' };
+    else if (emergencyFund >= monthlyExpense * 6) return { stage: 'financial_security', name: '财务安全', color: '#A2DDAA' };
+    else {
       const progress = Math.min(100, Math.round(emergencyFund / (monthlyExpense * 6) * 100));
       return { stage: 'financial_survival', name: '财务求生', color: '#EA6668', progress };
     }
@@ -434,27 +367,17 @@ class GameState {
     const netWorth = this.player.getNetWorth();
     const passive = this.player.passiveIncome + Math.round(this.player.investments * 0.006);
     const monthlyExpense = this.player.getMonthlyExpense().total;
-
     let ending;
-    if (passive >= monthlyExpense && netWorth > 5000000) {
-      ending = { id: 'financial_freedom', name: '🏆 财务自由型', description: '你实现了财务自由，被动收入覆盖所有支出，净资产超过500万。' };
-    } else if (this.player.careerLevel >= 5) {
-      ending = { id: 'career_success', name: '🎖️ 事业成功型', description: '你在事业上达到了顶峰，成为行业内有影响力的人物。' };
-    } else if (this.player.isMarried && this.player.childrenCount > 0 && this.player.happiness > 80) {
-      ending = { id: 'family_happiness', name: '👨‍👩‍👧 家庭幸福型', description: '你拥有幸福的家庭，婚姻美满，子女成才，人生无憾。' };
-    } else if (netWorth < 0 || this.player.health <= 0) {
-      ending = { id: 'bankruptcy', name: '💔 破产人生型', description: '你的人生以破产告终，资不抵债，健康崩溃。' };
-    } else {
-      ending = { id: 'peaceful', name: '🏠 平凡安稳型', description: '你过着平凡但安稳的一生，有房有车，家庭和睦，虽无大富大贵但也无憾。' };
-    }
-
+    if (passive >= monthlyExpense && netWorth > 5000000) ending = { id: 'financial_freedom', name: '🏆 财务自由型', description: '你实现了财务自由，被动收入覆盖所有支出，净资产超过500万。' };
+    else if (this.player.careerLevel >= 5) ending = { id: 'career_success', name: '🎖️ 事业成功型', description: '你在事业上达到了顶峰，成为行业内有影响力的人物。' };
+    else if (this.player.isMarried && this.player.childrenCount > 0 && this.player.happiness > 80) ending = { id: 'family_happiness', name: '👨‍👩‍👧 家庭幸福型', description: '你拥有幸福的家庭，婚姻美满，子女成才，人生无憾。' };
+    else if (netWorth < 0 || this.player.health <= 0) ending = { id: 'bankruptcy', name: '💔 破产人生型', description: '你的人生以破产告终，资不抵债，健康崩溃。' };
+    else ending = { id: 'peaceful', name: '🏠 平凡安稳型', description: '你过着平凡但安稳的一生，有房有车，家庭和睦，虽无大富大贵但也无憾。' };
     ending.parallelHooks = this.calculateParallelHooks();
-
     if (!this.endingRecorded && typeof CollectionManager !== 'undefined') {
       this.endingRecorded = true;
       CollectionManager.recordGameEnd(this.player, ending, this);
     }
-
     return ending;
   }
 
@@ -462,73 +385,41 @@ class GameState {
     const hooks = [];
     const p = this.player;
     const chosenAges = Object.keys(p.lifeChoices).map(Number).sort((a, b) => a - b);
-
     for (const age of chosenAges) {
       const choiceId = p.lifeChoices[age];
       const lifeChoice = LIFE_CHOICES[age];
       if (!lifeChoice) continue;
       const chosenOption = lifeChoice.choices.find(c => c.id === choiceId);
-      if (chosenOption && chosenOption.parallelHook) {
-        hooks.push({ type: 'not_chosen', age: age, text: chosenOption.parallelHook });
-      }
+      if (chosenOption && chosenOption.parallelHook) hooks.push({ type: 'not_chosen', age: age, text: chosenOption.parallelHook });
       if (PARALLEL_HOOKS.notChosen[age] && PARALLEL_HOOKS.notChosen[age][choiceId]) {
         const exists = hooks.some(h => h.text === PARALLEL_HOOKS.notChosen[age][choiceId]);
-        if (!exists) {
-          hooks.push({ type: 'not_chosen', age: age, text: PARALLEL_HOOKS.notChosen[age][choiceId] });
-        }
+        if (!exists) hooks.push({ type: 'not_chosen', age: age, text: PARALLEL_HOOKS.notChosen[age][choiceId] });
       }
     }
-
-    if (p.sideIncome <= 0 && p.age >= 30) {
-      hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.noSideIncome });
-    }
-    if (p.investments <= 10000 && p.age >= 35) {
-      hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.noInvestment });
-    }
-    if (p.health < 40) {
-      hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.poorHealth });
-    }
-    if (!p.isMarried && p.age >= 35) {
-      hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.noMarriage });
-    }
-    if (p.debt > 100000) {
-      hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.highDebt });
-    }
-
+    if (p.sideIncome <= 0 && p.age >= 30) hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.noSideIncome });
+    if (p.investments <= 10000 && p.age >= 35) hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.noInvestment });
+    if (p.health < 40) hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.poorHealth });
+    if (!p.isMarried && p.age >= 35) hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.noMarriage });
+    if (p.debt > 100000) hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.highDebt });
     const choiceHooks = hooks.filter(h => h.type === 'not_chosen');
     const genericHooks = hooks.filter(h => h.type === 'generic');
     for (let i = genericHooks.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [genericHooks[i], genericHooks[j]] = [genericHooks[j], genericHooks[i]];
     }
-
     const finalHooks = [];
     const maxHooks = 3;
-    for (const h of choiceHooks) {
-      if (finalHooks.length >= maxHooks) break;
-      finalHooks.push(h);
-    }
-    for (const h of genericHooks) {
-      if (finalHooks.length >= maxHooks) break;
-      finalHooks.push(h);
-    }
-
-    if (finalHooks.length === 0) {
-      finalHooks.push({ type: 'default', text: '人生没有如果，但如果有呢？再开一局，试试不同的选择。' });
-    }
-
+    for (const h of choiceHooks) { if (finalHooks.length >= maxHooks) break; finalHooks.push(h); }
+    for (const h of genericHooks) { if (finalHooks.length >= maxHooks) break; finalHooks.push(h); }
+    if (finalHooks.length === 0) finalHooks.push({ type: 'default', text: '人生没有如果，但如果有呢？再开一局，试试不同的选择。' });
     return finalHooks.map(h => h.text);
   }
 
   save() {
     const saveData = {
-      phase: this.phase,
-      currentMonth: this.currentMonth,
-      currentYear: this.currentYear,
-      totalMonthsPlayed: this.totalMonthsPlayed,
-      skillPoints: this.skillPoints,
-      player: this.player ? this.player.serialize() : null,
-      savedAt: Date.now()
+      phase: this.phase, currentMonth: this.currentMonth, currentYear: this.currentYear,
+      totalMonthsPlayed: this.totalMonthsPlayed, skillPoints: this.skillPoints,
+      player: this.player ? this.player.serialize() : null, savedAt: Date.now()
     };
     localStorage.setItem('life_is_a_stage_save', JSON.stringify(saveData));
     return true;
@@ -544,14 +435,9 @@ class GameState {
       this.currentYear = data.currentYear;
       this.totalMonthsPlayed = data.totalMonthsPlayed;
       this.skillPoints = data.skillPoints;
-      if (data.player) {
-        this.player = Player.deserialize(data.player);
-      }
+      if (data.player) this.player = Player.deserialize(data.player);
       return true;
-    } catch (e) {
-      console.error('Load failed:', e);
-      return false;
-    }
+    } catch (e) { console.error('Load failed:', e); return false; }
   }
 
   clearSave() {
