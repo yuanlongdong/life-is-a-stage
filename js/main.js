@@ -20,6 +20,7 @@ class Game {
       case GamePhase.INVEST: html = this.ui.renderInvest(); break;
       case GamePhase.GAME_OVER: html = this.ui.renderGameOver(this.state.gameOverReason || { message: '游戏结束' }); break;
       case GamePhase.COLLECTION: html = this.ui.renderCollection(); break;
+      case GamePhase.LAST_GAME_REVIEW: html = this.ui.renderGame() + this.ui.renderLastGameReview(); break;
       default: html = this.ui.renderMenu();
     }
     if (this.state.phase === GamePhase.EVENT && this.state.pendingEvent) {
@@ -37,7 +38,7 @@ class Game {
     if (scenario) { this.state.startNewGame(scenario); this.render(); }
   }
   showAbout() {
-    alert('《人生如戏》\n\n一款人生模拟 × 财商教育 × 卡牌决策游戏。\n\n每个人都是自己人生的主角，你的每一个选择，都在书写剧本的下一幕。\n\n版本: v0.3 P1');
+    alert('《人生如戏》\n\n一款人生模拟 × 财商教育 × 卡牌决策游戏。\n\n每个人都是自己人生的主角，你的每一个选择，都在书写剧本的下一幕。\n\n版本: v0.4 P1');
   }
   showCollection() { this.state.phase = GamePhase.COLLECTION; this.render(); }
   loadGame() {
@@ -84,6 +85,11 @@ class Game {
     this.render();
   }
   continueAfterYearReview() { this.state.phase = GamePhase.PLAYING; this.render(); }
+  // 【P1记忆继承】从上一局回顾继续游戏
+  continueAfterLastGameReview() {
+    this.state.continueAfterLastGameReview();
+    this.render();
+  }
   restart() {
     this.state.clearSave();
     this.state.phase = GamePhase.SCENARIO_SELECT;
