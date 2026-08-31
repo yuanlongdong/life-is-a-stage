@@ -39,6 +39,14 @@ class GameState {
     this.notifications = [];
     this.player.addEventLog(`🎬 人生大幕拉开！你以【${scenario.name}】的身份开始了新的人生。`);
     this.player.addEventLog(`💡 ${scenario.tips}`);
+
+    // 【修复】检查初始年龄是否有人生岔路，有则立即触发
+    const initialLifeChoice = LIFE_CHOICES[this.player.age];
+    if (initialLifeChoice && !this.player.lifeChoices[this.player.age]) {
+      this.pendingEvent = initialLifeChoice;
+      this.phase = GamePhase.EVENT;
+    }
+
     return this.player;
   }
 
