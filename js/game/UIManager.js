@@ -116,6 +116,7 @@ class UIManager {
         <div class="action-buttons">
           <button class="action-btn skill-btn" onclick="game.showSkillTree()"><span class="action-icon">🎯</span><span>技能树</span></button>
           <button class="action-btn invest-btn" onclick="game.showInvest()"><span class="action-icon">💹</span><span>投资/还债</span></button>
+          <button class="action-btn relationship-btn" onclick="game.showRelationships()"><span class="action-icon">👥</span><span>人际关系</span></button>
           <button class="action-btn next-btn" onclick="game.nextMonth()"><span class="action-icon">⏭️</span><span>下一月</span></button>
         </div>
         <div class="event-log">
@@ -181,6 +182,116 @@ class UIManager {
     return `<div class="screen invest-screen"><div class="screen-header"><button class="btn-back" onclick="game.backToGame()">← 返回</button><h2>💹 投资与还债</h2><div class="skill-money">💰 ¥${this.formatNumber(p.savings)}</div></div><div class="invest-overview"><div class="io-item"><div class="io-label">储蓄</div><div class="io-value">¥${this.formatNumber(p.savings)}</div></div><div class="io-item"><div class="io-label">投资</div><div class="io-value">¥${this.formatNumber(p.investments)}</div></div><div class="io-item"><div class="io-label">负债</div><div class="io-value negative">¥${this.formatNumber(p.debt)}</div></div></div><div class="invest-section"><h3>📈 投资产品</h3><div class="invest-options"><div class="invest-card"><div class="invest-header"><span class="invest-icon">🏦</span><div><div class="invest-name">货币基金</div><div class="invest-desc">年化约3%，低风险</div></div></div><div class="invest-actions"><button class="btn-invest" onclick="game.invest(500, 'fund')">投¥500</button><button class="btn-invest" onclick="game.invest(2000, 'fund')">投¥2000</button></div></div><div class="invest-card ${!p.unlocks.fund ? 'locked' : ''}"><div class="invest-header"><span class="invest-icon">📈</span><div><div class="invest-name">指数基金 ${!p.unlocks.fund ? '🔒' : ''}</div><div class="invest-desc">年化约8%，中风险（需学习基金定投）</div></div></div><div class="invest-actions"><button class="btn-invest" onclick="game.invest(500, 'fund')" ${!p.unlocks.fund ? 'disabled' : ''}>投¥500</button><button class="btn-invest" onclick="game.invest(2000, 'fund')" ${!p.unlocks.fund ? 'disabled' : ''}>投¥2000</button></div></div><div class="invest-card ${!p.unlocks.stock ? 'locked' : ''}"><div class="invest-header"><span class="invest-icon">📊</span><div><div class="invest-name">股票投资 ${!p.unlocks.stock ? '🔒' : ''}</div><div class="invest-desc">年化约12%，高风险（需学习股票基础）</div></div></div><div class="invest-actions"><button class="btn-invest" onclick="game.invest(1000, 'stock')" ${!p.unlocks.stock ? 'disabled' : ''}>投¥1000</button><button class="btn-invest" onclick="game.invest(5000, 'stock')" ${!p.unlocks.stock ? 'disabled' : ''}>投¥5000</button></div></div></div></div><div class="invest-section"><h3>💰 取出投资</h3><div class="invest-actions"><button class="btn-withdraw" onclick="game.withdrawInvestment(1000)">取出¥1000</button><button class="btn-withdraw" onclick="game.withdrawInvestment(${p.investments})">全部取出</button></div></div><div class="invest-section"><h3>💳 提前还债（相当于15%年化收益）</h3><div class="debt-info"><span>当前负债: ¥${this.formatNumber(p.debt)}</span><span>月利率: 1.2%</span></div><div class="invest-actions"><button class="btn-repay" onclick="game.repayDebt(500)" ${p.debt <= 0 ? 'disabled' : ''}>还¥500</button><button class="btn-repay" onclick="game.repayDebt(2000)" ${p.debt <= 0 ? 'disabled' : ''}>还¥2000</button><button class="btn-repay" onclick="game.repayDebt(${p.savings})" ${p.debt <= 0 ? 'disabled' : ''}>全部还清</button></div></div></div>`;
   }
 
+  // 【P2】渲染人际关系界面
+  renderRelationships() {
+    const p = this.game.player;
+    const rm = this.game.relationshipManager;
+    const overview = rm.getRelationshipOverview();
+    const friendsHtml = rm.friends.length > 0
+      ? rm.friends.map(f => `
+        <div class="friend-card">
+          <div class="friend-info">
+            <div class="friend-name">${f.name} <span class="friend-occupation">${f.occupation}</span></div>
+            <div class="friend-meta">${f.meetContext} · ${f.meetAge}岁认识</div>
+          </div>
+          <div class="friend-relationship">
+            <div class="relationship-bar">
+              <div class="relationship-fill" style="width:${f.relationship}%;background:${f.relationship >= 70 ? '#52C41A' : f.relationship >= 40 ? '#FAAD14' : '#EA6668'}"></div>
+            </div>
+            <span class="relationship-value">${f.relationship}</span>
+          </div>
+          <button class="btn-contact" onclick="game.contactFriend('${f.id}')">📞 联系</button>
+        </div>
+      `).join('')
+      : '<div class="empty-state">还没有朋友，多参加社交活动吧</div>';
+    let partnerHtml = '';
+    if (rm.partner) {
+      const partner = rm.partner;
+      const statusText = { dating: '💕 恋爱中', married: '💍 已婚', divorced: '💔 离异' }[partner.status] || partner.status;
+      partnerHtml = `
+        <div class="partner-card">
+          <div class="partner-header">
+            <div class="partner-name">${partner.name} <span class="partner-status">${statusText}</span></div>
+            <div class="partner-occupation">${partner.occupation} · ${partner.personality}</div>
+          </div>
+          <div class="partner-relationship">
+            <div class="relationship-bar">
+              <div class="relationship-fill" style="width:${partner.relationship}%;background:#EAA7B2"></div>
+            </div>
+            <span class="relationship-value">${partner.relationship}</span>
+          </div>
+          <div class="partner-actions">
+            ${partner.status === 'dating' ? `
+              <button class="btn-date" onclick="game.goOnDate()">🌹 约会</button>
+              <button class="btn-propose" onclick="game.propose()">💍 求婚</button>
+            ` : ''}
+            ${partner.status === 'married' ? `
+              <button class="btn-divorce" onclick="game.divorce()">💔 离婚</button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    } else {
+      partnerHtml = '<div class="empty-state">单身中，等待遇到对的人</div>';
+    }
+    const childrenHtml = rm.children.length > 0
+      ? rm.children.map(c => `
+        <div class="child-card">
+          <div class="child-info">
+            <div class="child-name">${c.name} <span class="child-gender">${c.gender}</span></div>
+            <div class="child-meta">${Math.floor(c.age)}岁 · ${c.educationLevel}</div>
+          </div>
+          <div class="child-stats">
+            <div class="child-stat">
+              <span class="stat-label">教育质量</span>
+              <div class="relationship-bar"><div class="relationship-fill" style="width:${c.educationQuality}%;background:#9BBBF4"></div></div>
+            </div>
+            <div class="child-stat">
+              <span class="stat-label">亲子关系</span>
+              <div class="relationship-bar"><div class="relationship-fill" style="width:${c.relationship}%;background:#EAA7B2"></div></div>
+            </div>
+          </div>
+          <div class="child-actions">
+            <button class="btn-educate" onclick="game.investInChildEducation('${c.id}')">📚 教育投资</button>
+            <button class="btn-accompany" onclick="game.spendTimeWithChild('${c.id}')">👨‍👧 陪伴</button>
+          </div>
+        </div>
+      `).join('')
+      : '<div class="empty-state">还没有孩子</div>';
+    return `
+      <div class="relationships-screen">
+        <div class="screen-header">
+          <h2>👥 人际关系</h2>
+          <button class="btn-back" onclick="game.backToGame()">← 返回</button>
+        </div>
+        <div class="social-overview">
+          <div class="social-score">
+            <div class="score-label">社交分数</div>
+            <div class="score-value">${overview.socialScore}</div>
+            <div class="score-bar"><div class="score-fill" style="width:${overview.socialScore}%"></div></div>
+          </div>
+          <div class="social-stats">
+            <div class="stat-item"><span class="stat-icon">👥</span><span class="stat-text">朋友 ${overview.friends.total}（亲密${overview.friends.close}）</span></div>
+            <div class="stat-item"><span class="stat-icon">💕</span><span class="stat-text">${overview.partner.description}</span></div>
+            <div class="stat-item"><span class="stat-icon">👶</span><span class="stat-text">子女 ${overview.children.total}（在学${overview.children.inSchool}）</span></div>
+          </div>
+        </div>
+        <div class="relationship-section">
+          <h3>💕 伴侣</h3>
+          ${partnerHtml}
+        </div>
+        <div class="relationship-section">
+          <h3>👥 朋友 <span class="section-count">${rm.friends.length}</span></h3>
+          <div class="friends-list">${friendsHtml}</div>
+        </div>
+        <div class="relationship-section">
+          <h3>👶 子女 <span class="section-count">${rm.children.length}</span></h3>
+          <div class="children-list">${childrenHtml}</div>
+        </div>
+      </div>
+    `;
+  }
+
   renderEvent(event) {
     const isLifeChoice = event.isLifeChoice === true;
     const choicesHtml = event.choices.map((choice, index) => {
@@ -216,7 +327,6 @@ class UIManager {
     return `<div class="screen gameover-screen"><div class="gameover-content"><div class="gameover-icon">🎬</div><h2>人生谢幕</h2><p class="gameover-reason">${reason.message}</p><div class="ending-card"><div class="ending-name">${ending.name}</div><div class="ending-desc">${ending.description}</div></div>${ending.parallelHooks && ending.parallelHooks.length > 0 ? `<div class="parallel-hooks-section"><div class="ph-title">🎭 平行人生</div><div class="ph-subtitle">如果当时……</div>${ending.parallelHooks.map(hook => `<div class="parallel-hook"><div class="ph-quote">"</div><div class="ph-text">${hook}</div></div>`).join('')}<div class="ph-cta">再开一局，试试不同的选择？</div></div>` : ''}<div class="final-stats"><div class="fs-item"><div class="fs-label">享年</div><div class="fs-value">${p.age}岁</div></div><div class="fs-item"><div class="fs-label">最终净资产</div><div class="fs-value">¥${this.formatNumber(p.getNetWorth())}</div></div><div class="fs-item"><div class="fs-label">学会技能</div><div class="fs-value">${Object.keys(p.learnedSkills).length}个</div></div><div class="fs-item"><div class="fs-label">获得成就</div><div class="fs-value">${p.achievements.length}个</div></div></div><div class="gameover-actions"><button class="btn btn-primary" onclick="game.restart()">🔄 重开新人生</button><button class="btn btn-secondary" onclick="game.backToMenu()">🏠 返回主菜单</button></div></div></div>`;
   }
 
-  // 【P1记忆继承】渲染上一局回顾弹窗
   renderLastGameReview() {
     const summary = this.game.lastGameSummary;
     const memoryLevel = this.game.memoryLevel || 1;
