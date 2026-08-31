@@ -18,6 +18,7 @@ class Game {
       case GamePhase.PLAYING: html = this.ui.renderGame(); break;
       case GamePhase.SKILL_TREE: html = this.ui.renderSkillTree(); break;
       case GamePhase.INVEST: html = this.ui.renderInvest(); break;
+      case GamePhase.RELATIONSHIPS: html = this.ui.renderRelationships(); break;
       case GamePhase.GAME_OVER: html = this.ui.renderGameOver(this.state.gameOverReason || { message: '游戏结束' }); break;
       case GamePhase.COLLECTION: html = this.ui.renderCollection(); break;
       case GamePhase.LAST_GAME_REVIEW: html = this.ui.renderGame() + this.ui.renderLastGameReview(); break;
@@ -38,7 +39,7 @@ class Game {
     if (scenario) { this.state.startNewGame(scenario); this.render(); }
   }
   showAbout() {
-    alert('《人生如戏》\n\n一款人生模拟 × 财商教育 × 卡牌决策游戏。\n\n每个人都是自己人生的主角，你的每一个选择，都在书写剧本的下一幕。\n\n版本: v0.4 P1');
+    alert('《人生如戏》\n\n一款人生模拟 × 财商教育 × 卡牌决策游戏。\n\n每个人都是自己人生的主角，你的每一个选择，都在书写剧本的下一幕。\n\n版本: v0.5 P2');
   }
   showCollection() { this.state.phase = GamePhase.COLLECTION; this.render(); }
   loadGame() {
@@ -53,6 +54,8 @@ class Game {
   }
   showSkillTree() { this.state.phase = GamePhase.SKILL_TREE; this.render(); }
   showInvest() { this.state.phase = GamePhase.INVEST; this.render(); }
+  // 【P2】显示人际关系界面
+  showRelationships() { this.state.phase = GamePhase.RELATIONSHIPS; this.render(); }
   backToGame() { this.state.phase = GamePhase.PLAYING; this.render(); }
   learnSkill(skillId) {
     const result = this.state.learnSkill(skillId);
@@ -79,6 +82,42 @@ class Game {
     if (!result.success) { alert(result.message); }
     this.render();
   }
+  // === 人际关系操作 ===
+  contactFriend(friendId) {
+    const result = this.state.relationshipManager.contactFriend(friendId, this.state.player);
+    if (!result.success) { alert(result.message); }
+    this.render();
+  }
+  goOnDate() {
+    const result = this.state.relationshipManager.goOnDate(this.state.player);
+    if (!result.success) { alert(result.message); }
+    this.render();
+  }
+  propose() {
+    const result = this.state.relationshipManager.propose(this.state.player);
+    if (!result.success) { alert(result.message); }
+    else { alert('求婚成功！恭喜结婚！'); }
+    this.render();
+  }
+  divorce() {
+    if (!confirm('确定要离婚吗？这将损失40%的储蓄。')) return;
+    const result = this.state.relationshipManager.divorce(this.state.player);
+    if (!result.success) { alert(result.message); }
+    this.render();
+  }
+  investInChildEducation(childId) {
+    const amount = prompt('教育投资金额（元）：', '5000');
+    if (!amount) return;
+    const result = this.state.relationshipManager.investInChildEducation(childId, parseInt(amount), this.state.player);
+    if (!result.success) { alert(result.message); }
+    this.render();
+  }
+  spendTimeWithChild(childId) {
+    const result = this.state.relationshipManager.spendTimeWithChild(childId, this.state.player);
+    if (!result.success) { alert(result.message); }
+    this.render();
+  }
+  // === 事件操作 ===
   resolveEvent(choiceIndex) {
     const result = this.state.resolveEventChoice(choiceIndex);
     if (result && !result.success) { alert(result.message); return; }
