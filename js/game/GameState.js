@@ -10,7 +10,8 @@ const GamePhase = {
   SKILL_TREE: 'skill_tree',
   INVEST: 'invest',
   GAME_OVER: 'game_over',
-  YEAR_REVIEW: 'year_review'
+  YEAR_REVIEW: 'year_review',
+  COLLECTION: 'collection'
 };
 
 class GameState {
@@ -27,7 +28,6 @@ class GameState {
     this.notifications = [];
   }
 
-  // 开始新游戏
   startNewGame(scenario) {
     this.player = new Player(scenario);
     this.phase = GamePhase.PLAYING;
@@ -37,10 +37,17 @@ class GameState {
     this.totalMonthsPlayed = 0;
     this.skillPoints = 0;
     this.notifications = [];
+    this.scenarioStartAge = this.player.age;
+    this.memoryInherited = false;
+    this.endingRecorded = false;
+
+    if (typeof CollectionManager !== 'undefined') {
+      CollectionManager.recordScenarioStart(scenario);
+    }
+
     this.player.addEventLog(`🎬 人生大幕拉开！你以【${scenario.name}】的身份开始了新的人生。`);
     this.player.addEventLog(`💡 ${scenario.tips}`);
 
-    // 【修复】检查初始年龄是否有人生岔路，有则立即触发
     const initialLifeChoice = LIFE_CHOICES[this.player.age];
     if (initialLifeChoice && !this.player.lifeChoices[this.player.age]) {
       this.pendingEvent = initialLifeChoice;
@@ -50,39 +57,40 @@ class GameState {
     return this.player;
   }
 
-  // 推进一个月
   advanceMonth() {
     if (!this.player || this.phase !== GamePhase.PLAYING) return null;
 
     const month = this.currentMonth;
     const year = this.currentYear;
 
-    // 1. 结算收入支出
     const income = this.player.getMonthlyIncome();
     const expense = this.player.getMonthlyExpense();
     const balance = income.total - expense.total;
 
-    // 2. 更新储蓄和债务
     this.player.savings += balance;
     if (this.player.debt > 0) {
       const principalPayment = expense.debtPrincipal;
       this.player.debt = Math.max(0, this.player.debt - principalPayment);
     }
 
-    // 3. 投资收益再投入
     const investGain = Math.round(this.player.investments * (0.006 + this.player.modifiers.investmentReturnBonus / 12));
     this.player.investments += investGain;
 
-    // 4. 处理学习队列
     this.processLearningQueue();
 
-    // 5. 属性自然变化
-    this.applyNaturalDecay();
+    if (this.player.careerDelayMonths > 0) {
+      this.player.careerDelayMonths--;
+      if (this.player.careerDelayMonths === 0 && !this.player.careerDelayApplied) {
+        const baseSalary = this.player.salary;
+        this.player.salary = Math.round(baseSalary * this.player.salaryStartMultiplier);
+        this.player.careerDelayApplied = true;
+        this.player.addEventLog(`🎓 职业延迟结束！工资起点调整为 ¥${this.player.salary}（倍率${this.player.salaryStartMultiplier}x）。`);
+      }
+    }
 
-    // 6. 记录月度数据
+    this.applyNaturalDecay();
     this.player.recordMonthlyData(month, year);
 
-    // 7. 推进时间
     this.currentMonth++;
     this.totalMonthsPlayed++;
     if (this.currentMonth > 12) {
@@ -93,14 +101,12 @@ class GameState {
       this.phase = GamePhase.YEAR_REVIEW;
     }
 
-    // 8. 检查游戏结束条件
     const gameOver = this.checkGameOver();
     if (gameOver) {
       this.phase = GamePhase.GAME_OVER;
       return { gameOver, income, expense, balance };
     }
 
-    // 9. 检查是否触发事件
     const event = this.checkForEvent();
     if (event) {
       this.pendingEvent = event;
@@ -110,7 +116,6 @@ class GameState {
     return { income, expense, balance, event, gameOver: null };
   }
 
-  // 处理学习队列
   processLearningQueue() {
     const completed = [];
     this.player.learningQueue = this.player.learningQueue.filter(item => {
@@ -139,7 +144,6 @@ class GameState {
           const newLevel = Math.min(skill.maxLevel, currentLevel + 1);
           this.player.developedSkills[item.skillId] = newLevel;
           this.player.skillLevels[skill.category] = (this.player.skillLevels[skill.category] || 0) + 1;
-          // 应用每级效果
           if (skill.effectsPerLevel) {
             const applied = this.player.applyEffects(skill.effectsPerLevel);
             this.player.addEventLog(`⬆️ 【${skill.name}】升级到 Lv.${newLevel}：${applied.join('，')}`);
@@ -150,38 +154,30 @@ class GameState {
     });
   }
 
-  // 属性自然衰减
   applyNaturalDecay() {
-    // 健康每月自然衰减1点（如果没有健身）
     if (!this.player.learnedSkills['life_fitness']) {
       this.player.health = Math.max(0, this.player.health - 1);
     }
-    // 长期不社交，人脉缓慢衰减
     if (Math.random() < 0.1) {
       this.player.network = Math.max(0, this.player.network - 1);
     }
-    // 负债压力影响幸福
     if (this.player.debt > this.player.savings * 2) {
       this.player.happiness = Math.max(0, this.player.happiness - 1);
     }
   }
 
-  // 年度变化
   applyYearlyChanges() {
-    // 工资年度增长5%
-    if (!this.player.isRetired) {
-      this.player.salary = Math.round(this.player.salary * 1.05);
+    if (!this.player.isRetired && this.player.careerDelayMonths === 0) {
+      const growthRate = 1.05 * (this.player.modifiers.salaryGrowthMultiplier || 1);
+      this.player.salary = Math.round(this.player.salary * growthRate);
     }
-    // 生活成本年度增长3%
     this.player.baseExpense = Math.round(this.player.baseExpense * 1.03);
-    // 年龄增长带来的健康上限变化
     if (this.player.age > 40) {
       this.player.maxHealth = Math.max(60, 100 - (this.player.age - 40));
     }
     this.player.addEventLog(`🎂 ${this.player.age}岁了！新的一年开始。`);
   }
 
-  // 检查游戏结束
   checkGameOver() {
     if (this.player.health <= 0) {
       return { reason: 'death', message: '你的健康耗尽了，人生谢幕。' };
@@ -189,7 +185,6 @@ class GameState {
     if (this.player.age >= 80) {
       return { reason: 'age', message: '你活到了80岁，人生圆满。' };
     }
-    // 连续3个月负结余且无储蓄
     if (this.player.monthlyHistory.length >= 3) {
       const recent = this.player.monthlyHistory.slice(-3);
       const allNegative = recent.every(h => h.balance < 0);
@@ -200,9 +195,7 @@ class GameState {
     return null;
   }
 
-  // 检查是否触发事件
   checkForEvent() {
-    // 【P0核心机制】检查关键年龄人生岔路（优先级最高，不可逆选择）
     const lifeChoice = LIFE_CHOICES[this.player.age];
     if (lifeChoice && this.currentMonth === 1) {
       if (!this.player.lifeChoices[this.player.age]) {
@@ -210,17 +203,14 @@ class GameState {
       }
     }
 
-    // 检查里程碑事件
     const milestone = MILESTONE_EVENTS[this.player.age];
     if (milestone && this.currentMonth === 1) {
-      // 检查是否已经触发过
       const triggered = this.player.eventLog.some(log => log.text.includes(milestone[0].name));
       if (!triggered) {
         return milestone[0];
       }
     }
 
-    // 随机事件（30%概率）
     if (Math.random() < 0.30) {
       const eligibleEvents = EVENTS.filter(event => {
         if (!event.triggerCondition) return true;
@@ -238,7 +228,6 @@ class GameState {
       });
 
       if (eligibleEvents.length > 0) {
-        // 按概率加权选择
         const totalProb = eligibleEvents.reduce((sum, e) => sum + (e.probability || 0.1), 0);
         let rand = Math.random() * totalProb;
         for (const event of eligibleEvents) {
@@ -251,13 +240,11 @@ class GameState {
     return null;
   }
 
-  // 处理事件选择
   resolveEventChoice(choiceIndex) {
     if (!this.pendingEvent) return null;
     const choice = this.pendingEvent.choices[choiceIndex];
     if (!choice) return null;
 
-    // 检查需求
     if (choice.requirement) {
       const req = choice.requirement;
       if (req.minNetwork && this.player.network < req.minNetwork) {
@@ -268,7 +255,6 @@ class GameState {
       }
     }
 
-    // 【P0核心机制】如果是人生岔路事件，记录选择并解锁人生路线
     if (this.pendingEvent.isLifeChoice) {
       const age = this.pendingEvent.age;
       this.player.lifeChoices[age] = choice.id;
@@ -279,7 +265,6 @@ class GameState {
         month: this.currentMonth,
         year: this.currentYear
       });
-      // 解锁人生路线
       if (choice.unlocks) {
         choice.unlocks.forEach(route => {
           if (this.player.lifeRoutes.hasOwnProperty(route)) {
@@ -287,14 +272,15 @@ class GameState {
           }
         });
       }
-      // 应用岔路的长期效果（修改玩家modifiers等）
       if (choice.longTermEffects) {
         this.applyLongTermEffects(choice.longTermEffects);
+      }
+      if (choice.midTermEffects) {
+        this.applyLongTermEffects(choice.midTermEffects);
       }
       this.player.addEventLog(`🚦 【人生岔路·${age}岁】你选择了「${choice.shortName || choice.text}」。这个选择将改变你接下来的人生轨迹。`);
     }
 
-    // 应用效果
     const applied = this.player.applyEffects(choice.effects || choice.immediateEffects || {});
     this.player.addEventLog(`${this.pendingEvent.icon} ${this.pendingEvent.name}：${choice.resultText || choice.text}`);
 
@@ -311,53 +297,46 @@ class GameState {
     return result;
   }
 
-  // 【P0核心机制】应用人生岔路的长期效果
   applyLongTermEffects(effects) {
     if (!effects) return;
     const p = this.player;
-    // 职业路线
     if (effects.careerLine) {
       p.careerLine = effects.careerLine;
     }
-    // 工资增长倍率
     if (effects.salaryGrowthMultiplier) {
       p.modifiers.salaryGrowthMultiplier = (p.modifiers.salaryGrowthMultiplier || 1) * effects.salaryGrowthMultiplier;
     }
-    // 工资上限倍率
     if (effects.salaryCapMultiplier) {
       p.modifiers.salaryCapMultiplier = (p.modifiers.salaryCapMultiplier || 1) * effects.salaryCapMultiplier;
     }
-    // 投资回报倍率
     if (effects.investmentReturnMultiplier) {
       p.modifiers.investmentReturnBonus = (p.modifiers.investmentReturnBonus || 0) + (effects.investmentReturnMultiplier - 1);
     }
-    // 副业收入增长
     if (effects.sideIncomeGrowthMultiplier) {
       p.modifiers.sideIncomeGrowthMultiplier = (p.modifiers.sideIncomeGrowthMultiplier || 1) * effects.sideIncomeGrowthMultiplier;
     }
-    // 幸福度上限加成
     if (effects.happinessCapBonus) {
       p.modifiers.happinessCapBonus = (p.modifiers.happinessCapBonus || 0) + effects.happinessCapBonus;
     }
-    // 标记有房产
     if (effects.hasHouse) {
       p.hasHouse = true;
     }
-    // 标记创业者路线
     if (effects.startupEndingPossible) {
       p.canGetStartupEnding = true;
     }
-    // 标记家庭路线
     if (effects.familyEndingPossible) {
       p.canGetFamilyEnding = true;
     }
-    // 延迟职业开始（考研等）
     if (effects.delayedCareer) {
-      p.careerStartDelay = effects.delayedCareer;
+      p.careerDelayMonths = effects.delayedCareer;
+      p.careerDelayApplied = false;
+      p.addEventLog(`📚 职业开始延迟${effects.delayedCareer}个月，期间无工资收入。`);
+    }
+    if (effects.salaryStartMultiplier) {
+      p.salaryStartMultiplier = effects.salaryStartMultiplier;
     }
   }
 
-  // 学习技能
   learnSkill(skillId) {
     const skill = LEARNABLE_SKILLS[skillId];
     if (!skill) return { success: false, message: '技能不存在' };
@@ -365,13 +344,9 @@ class GameState {
     if (!this.player.checkPrerequisite(skill)) return { success: false, message: '前置技能未满足' };
     if (!this.player.checkPrerequisiteCondition(skill)) return { success: false, message: '条件未满足' };
     if (this.player.savings < skill.cost) return { success: false, message: '金钱不足' };
-
-    // 检查是否已经在学习中
     if (this.player.learningQueue.some(q => q.skillId === skillId)) {
       return { success: false, message: '正在学习中' };
     }
-
-    // 扣除费用，加入学习队列
     this.player.savings -= skill.cost;
     const duration = Math.max(1, Math.round(skill.duration / this.player.modifiers.learningSpeedMultiplier));
     this.player.learningQueue.push({
@@ -384,19 +359,15 @@ class GameState {
     return { success: true, message: `开始学习${skill.name}`, duration };
   }
 
-  // 发展技能
   developSkill(skillId) {
     const skill = DEVELOPABLE_SKILLS[skillId];
     if (!skill) return { success: false, message: '技能不存在' };
     const currentLevel = this.player.developedSkills[skillId] || 0;
     if (currentLevel >= skill.maxLevel) return { success: false, message: '已满级' };
     if (this.player.savings < skill.costPerLevel) return { success: false, message: '金钱不足' };
-
-    // 检查是否已经在发展中
     if (this.player.learningQueue.some(q => q.skillId === skillId)) {
       return { success: false, message: '正在升级中' };
     }
-
     this.player.savings -= skill.costPerLevel;
     const duration = Math.max(1, Math.round(skill.durationPerLevel / this.player.modifiers.learningSpeedMultiplier));
     this.player.learningQueue.push({
@@ -409,19 +380,16 @@ class GameState {
     return { success: true, message: `开始升级${skill.name}`, duration };
   }
 
-  // 投资
   invest(amount, type) {
     if (this.player.savings < amount) return { success: false, message: '储蓄不足' };
     if (type === 'fund' && !this.player.unlocks.fund) return { success: false, message: '未解锁基金投资' };
     if (type === 'stock' && !this.player.unlocks.stock) return { success: false, message: '未解锁股票投资' };
-
     this.player.savings -= amount;
     this.player.investments += amount;
     this.player.addEventLog(`💹 投资${type === 'fund' ? '基金' : '股票'} ¥${amount}`);
     return { success: true };
   }
 
-  // 取出投资
   withdrawInvestment(amount) {
     if (this.player.investments < amount) return { success: false, message: '投资不足' };
     this.player.investments -= amount;
@@ -430,7 +398,6 @@ class GameState {
     return { success: true };
   }
 
-  // 提前还债
   repayDebt(amount) {
     if (this.player.savings < amount) return { success: false, message: '储蓄不足' };
     const actualPayment = Math.min(amount, this.player.debt);
@@ -440,7 +407,6 @@ class GameState {
     return { success: true, actualPayment };
   }
 
-  // 添加通知
   addNotification(message) {
     this.notifications.unshift({ message, time: Date.now() });
     if (this.notifications.length > 10) {
@@ -448,12 +414,10 @@ class GameState {
     }
   }
 
-  // 获取财务阶段
   getFinancialStage() {
     const monthlyExpense = this.player.getMonthlyExpense().total;
     const emergencyFund = this.player.savings;
     const passive = this.player.passiveIncome + Math.round(this.player.investments * 0.006);
-
     if (emergencyFund >= monthlyExpense * 6 && passive >= monthlyExpense) {
       return { stage: 'financial_freedom', name: '财务自由', color: '#52C41A' };
     } else if (emergencyFund >= monthlyExpense * 6 && passive >= monthlyExpense * 0.5) {
@@ -466,7 +430,6 @@ class GameState {
     }
   }
 
-  // 计算结局
   calculateEnding() {
     const netWorth = this.player.getNetWorth();
     const passive = this.player.passiveIncome + Math.round(this.player.investments * 0.006);
@@ -485,82 +448,60 @@ class GameState {
       ending = { id: 'peaceful', name: '🏠 平凡安稳型', description: '你过着平凡但安稳的一生，有房有车，家庭和睦，虽无大富大贵但也无憾。' };
     }
 
-    // 【P0核心机制】生成平行人生钩子（激发重开欲望）
     ending.parallelHooks = this.calculateParallelHooks();
+
+    if (!this.endingRecorded && typeof CollectionManager !== 'undefined') {
+      this.endingRecorded = true;
+      CollectionManager.recordGameEnd(this.player, ending, this);
+    }
+
     return ending;
   }
 
-  // 【P0核心机制】计算平行人生钩子
-  // 根据玩家本局的选择和未选择的岔路，生成"如果当时"的遗憾片段
   calculateParallelHooks() {
     const hooks = [];
     const p = this.player;
     const chosenAges = Object.keys(p.lifeChoices).map(Number).sort((a, b) => a - b);
 
-    // 1. 基于未选择的岔路生成钩子（每个已触发的岔路，看玩家选了什么，然后给"如果选了另一个"的钩子）
     for (const age of chosenAges) {
       const choiceId = p.lifeChoices[age];
       const lifeChoice = LIFE_CHOICES[age];
       if (!lifeChoice) continue;
-
-      // 找到玩家选择的那个选项
       const chosenOption = lifeChoice.choices.find(c => c.id === choiceId);
       if (chosenOption && chosenOption.parallelHook) {
-        hooks.push({
-          type: 'not_chosen',
-          age: age,
-          text: chosenOption.parallelHook
-        });
+        hooks.push({ type: 'not_chosen', age: age, text: chosenOption.parallelHook });
       }
-
-      // 也可以从PARALLEL_HOOKS.notChosen中取
       if (PARALLEL_HOOKS.notChosen[age] && PARALLEL_HOOKS.notChosen[age][choiceId]) {
-        // 避免重复
         const exists = hooks.some(h => h.text === PARALLEL_HOOKS.notChosen[age][choiceId]);
         if (!exists) {
-          hooks.push({
-            type: 'not_chosen',
-            age: age,
-            text: PARALLEL_HOOKS.notChosen[age][choiceId]
-          });
+          hooks.push({ type: 'not_chosen', age: age, text: PARALLEL_HOOKS.notChosen[age][choiceId] });
         }
       }
     }
 
-    // 2. 基于玩家状态生成通用钩子
-    // 没有副业收入
     if (p.sideIncome <= 0 && p.age >= 30) {
       hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.noSideIncome });
     }
-    // 没有投资
     if (p.investments <= 10000 && p.age >= 35) {
       hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.noInvestment });
     }
-    // 健康差
     if (p.health < 40) {
       hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.poorHealth });
     }
-    // 没结婚
     if (!p.isMarried && p.age >= 35) {
       hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.noMarriage });
     }
-    // 高负债
     if (p.debt > 100000) {
       hooks.push({ type: 'generic', text: PARALLEL_HOOKS.generic.highDebt });
     }
 
-    // 3. 打乱顺序，取前2-3个（太多会麻木，太少不够痒）
-    // 优先保留岔路相关的钩子（更有针对性）
     const choiceHooks = hooks.filter(h => h.type === 'not_chosen');
     const genericHooks = hooks.filter(h => h.type === 'generic');
-
-    // 打乱通用钩子
     for (let i = genericHooks.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [genericHooks[i], genericHooks[j]] = [genericHooks[j], genericHooks[i]];
     }
 
-    // 组合：岔路钩子优先，然后通用钩子，总共2-3个
     const finalHooks = [];
     const maxHooks = 3;
     for (const h of choiceHooks) {
@@ -572,18 +513,13 @@ class GameState {
       finalHooks.push(h);
     }
 
-    // 如果一个钩子都没有，给一个默认的
     if (finalHooks.length === 0) {
-      finalHooks.push({
-        type: 'default',
-        text: '人生没有如果，但如果有呢？再开一局，试试不同的选择。'
-      });
+      finalHooks.push({ type: 'default', text: '人生没有如果，但如果有呢？再开一局，试试不同的选择。' });
     }
 
     return finalHooks.map(h => h.text);
   }
 
-  // 存档
   save() {
     const saveData = {
       phase: this.phase,
@@ -598,7 +534,6 @@ class GameState {
     return true;
   }
 
-  // 读档
   load() {
     const saveData = localStorage.getItem('life_is_a_stage_save');
     if (!saveData) return false;
@@ -619,7 +554,6 @@ class GameState {
     }
   }
 
-  // 清除存档
   clearSave() {
     localStorage.removeItem('life_is_a_stage_save');
   }
