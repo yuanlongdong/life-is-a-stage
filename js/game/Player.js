@@ -4,39 +4,28 @@
 
 class Player {
   constructor(scenario) {
-    // 基础信息
     this.scenarioId = scenario.id;
     this.scenarioName = scenario.name;
     this.age = scenario.age;
     this.city = scenario.city;
-
-    // 四大属性
     this.health = scenario.initialStats.health;
     this.maxHealth = 100;
     this.happiness = scenario.initialStats.happiness;
     this.network = scenario.initialStats.network;
     this.knowledge = scenario.initialStats.knowledge;
-
-    // 财务
     this.salary = scenario.initialFinance.salary;
     this.baseExpense = scenario.initialFinance.baseExpense;
     this.savings = scenario.initialFinance.savings;
     this.investments = scenario.initialFinance.investments;
     this.debt = scenario.initialFinance.debt;
     this.propertyValue = scenario.initialFinance.propertyValue;
-
-    // 收入来源
     this.sideIncome = 0;
     this.passiveIncome = 0;
     this.pension = 0;
-
-    // 技能
     this.skillLevels = { ...scenario.initialSkills };
     this.learnedSkills = {};
     this.developedSkills = {};
     this.learningQueue = [];
-
-    // 人生状态
     this.isMarried = false;
     this.childrenCount = 0;
     this.hasHouse = false;
@@ -44,51 +33,17 @@ class Player {
     this.careerLevel = 1;
     this.careerDelayMonths = 0;
     this.salaryStartMultiplier = 1.0;
+    this.salaryCapMultiplier = 1.0;
     this.careerDelayApplied = false;
-
-    // 成就和称号
     this.achievements = [];
     this.titles = [];
     this.lifeChoices = {};
     this.lifeChoiceHistory = [];
-    this.lifeRoutes = {
-      standard_career: false,
-      academic_career: false,
-      startup_path: false,
-      side_hustle_path: false,
-      family_path: false,
-      homeowner: false,
-      aggressive_investor: false,
-      health_first: false
-    };
-
-    // 历史记录
+    this.lifeRoutes = { standard_career:false, academic_career:false, startup_path:false, side_hustle_path:false, family_path:false, homeowner:false, aggressive_investor:false, health_first:false };
     this.monthlyHistory = [];
     this.eventLog = [];
-
-    // 修饰器
-    this.modifiers = {
-      salaryMultiplier: 1.0,
-      expenseMultiplier: 1.0,
-      foodExpenseMultiplier: 1.0,
-      medicalExpenseMultiplier: 1.0,
-      investmentReturnBonus: 0,
-      sideIncomeMultiplier: 1.0,
-      learningSpeedMultiplier: 1.0,
-      opportunityBonus: 0
-    };
-
-    // 解锁状态
-    this.unlocks = {
-      fund: false,
-      stock: false,
-      property: false,
-      management: false,
-      startup: false,
-      riskTransfer: false
-    };
-
-    // 副业
+    this.modifiers = { salaryMultiplier:1.0, expenseMultiplier:1.0, foodExpenseMultiplier:1.0, medicalExpenseMultiplier:1.0, investmentReturnBonus:0, sideIncomeMultiplier:1.0, learningSpeedMultiplier:1.0, opportunityBonus:0 };
+    this.unlocks = { fund:false, stock:false, property:false, management:false, startup:false, riskTransfer:false };
     this.activeSideJobs = [];
   }
 
@@ -98,23 +53,13 @@ class Player {
 
   getMonthlyIncome() {
     let salaryIncome = 0;
-    if (this.isRetired) {
-      salaryIncome = this.pension;
-    } else if (this.careerDelayMonths > 0) {
-      salaryIncome = 0;
-    } else {
-      salaryIncome = Math.round(this.salary * this.modifiers.salaryMultiplier);
-    }
+    if (this.isRetired) salaryIncome = this.pension;
+    else if (this.careerDelayMonths > 0) salaryIncome = 0;
+    else salaryIncome = Math.round(this.salary * this.modifiers.salaryMultiplier);
     const sideIncome = Math.round(this.sideIncome * this.modifiers.sideIncomeMultiplier);
     const passiveIncome = this.passiveIncome;
     const investmentIncome = Math.round(this.investments * (0.006 + this.modifiers.investmentReturnBonus / 12));
-    return {
-      salary: salaryIncome,
-      side: sideIncome,
-      passive: passiveIncome,
-      investment: investmentIncome,
-      total: salaryIncome + sideIncome + passiveIncome + investmentIncome
-    };
+    return { salary: salaryIncome, side: sideIncome, passive: passiveIncome, investment: investmentIncome, total: salaryIncome + sideIncome + passiveIncome + investmentIncome };
   }
 
   getMonthlyExpense() {
@@ -122,13 +67,7 @@ class Player {
     const debtInterest = Math.round(this.debt * 0.012);
     const debtPrincipal = this.debt > 0 ? Math.min(Math.round(this.debt * 0.05), this.debt) : 0;
     const debtPayment = debtInterest + debtPrincipal;
-    return {
-      base: baseExp,
-      debtInterest: debtInterest,
-      debtPrincipal: debtPrincipal,
-      debtPayment: debtPayment,
-      total: baseExp + debtPayment
-    };
+    return { base: baseExp, debtInterest: debtInterest, debtPrincipal: debtPrincipal, debtPayment: debtPayment, total: baseExp + debtPayment };
   }
 
   getMonthlyBalance() {
@@ -153,105 +92,55 @@ class Player {
   }
 
   addAchievement(achievement) {
-    if (!this.achievements.includes(achievement)) {
-      this.achievements.push(achievement);
-      return true;
-    }
+    if (!this.achievements.includes(achievement)) { this.achievements.push(achievement); return true; }
     return false;
   }
 
   addTitle(title) {
-    if (!this.titles.includes(title)) {
-      this.titles.push(title);
-      return true;
-    }
+    if (!this.titles.includes(title)) { this.titles.push(title); return true; }
     return false;
   }
 
   recordMonthlyData(month, year) {
     const income = this.getMonthlyIncome();
     const expense = this.getMonthlyExpense();
-    this.monthlyHistory.push({
-      month,
-      year,
-      age: this.age,
-      income: income.total,
-      incomeBreakdown: { ...income },
-      expense: expense.total,
-      expenseBreakdown: { ...expense },
-      balance: income.total - expense.total,
-      netWorth: this.getNetWorth(),
-      savings: this.savings,
-      investments: this.investments,
-      debt: this.debt,
-      health: this.health,
-      happiness: this.happiness
-    });
+    this.monthlyHistory.push({ month, year, age: this.age, income: income.total, incomeBreakdown: { ...income }, expense: expense.total, expenseBreakdown: { ...expense }, balance: income.total - expense.total, netWorth: this.getNetWorth(), savings: this.savings, investments: this.investments, debt: this.debt, health: this.health, happiness: this.happiness });
   }
 
   addEventLog(text) {
-    this.eventLog.unshift({
-      month: this.age,
-      text,
-      timestamp: Date.now()
-    });
-    if (this.eventLog.length > 50) {
-      this.eventLog = this.eventLog.slice(0, 50);
-    }
+    this.eventLog.unshift({ month: this.age, text, timestamp: Date.now() });
+    if (this.eventLog.length > 50) this.eventLog = this.eventLog.slice(0, 50);
   }
 
   applyEffects(effects) {
     const applied = [];
-    if (effects.salaryMultiplier) {
-      this.modifiers.salaryMultiplier *= effects.salaryMultiplier;
-      applied.push(`工资×${effects.salaryMultiplier}`);
-    }
-    if (effects.expenseMultiplier) {
-      this.modifiers.expenseMultiplier *= effects.expenseMultiplier;
-      applied.push(`支出×${effects.expenseMultiplier}`);
-    }
-    if (effects.savings !== undefined) {
-      this.savings += effects.savings;
-      applied.push(`储蓄${effects.savings > 0 ? '+' : ''}${effects.savings}`);
-    }
-    if (effects.debt !== undefined) {
-      this.debt += effects.debt;
-      applied.push(`负债${effects.debt > 0 ? '+' : ''}${effects.debt}`);
-    }
-    if (effects.salary !== undefined) {
-      this.salary = effects.salary;
-      applied.push(`工资调整为¥${effects.salary}`);
-    }
-    if (effects.health !== undefined) {
-      this.health = Math.max(0, Math.min(this.maxHealth, this.health + effects.health));
-      applied.push(`健康${effects.health > 0 ? '+' : ''}${effects.health}`);
-    }
-    if (effects.happiness !== undefined) {
-      this.happiness = Math.max(0, Math.min(100, this.happiness + effects.happiness));
-      applied.push(`幸福${effects.happiness > 0 ? '+' : ''}${effects.happiness}`);
-    }
-    if (effects.network !== undefined) {
-      this.network = Math.max(0, Math.min(100, this.network + effects.network));
-      applied.push(`人脉${effects.network > 0 ? '+' : ''}${effects.network}`);
-    }
-    if (effects.knowledge !== undefined) {
-      this.knowledge = Math.max(0, Math.min(100, this.knowledge + effects.knowledge));
-      applied.push(`学识${effects.knowledge > 0 ? '+' : ''}${effects.knowledge}`);
-    }
-    if (effects.investmentMultiplier) {
-      this.investments = Math.round(this.investments * effects.investmentMultiplier);
-      applied.push(`投资×${effects.investmentMultiplier}`);
-    }
+    if (effects.salaryMultiplier) { this.modifiers.salaryMultiplier *= effects.salaryMultiplier; applied.push(`工资×${effects.salaryMultiplier}`); }
+    if (effects.expenseMultiplier) { this.modifiers.expenseMultiplier *= effects.expenseMultiplier; applied.push(`支出×${effects.expenseMultiplier}`); }
+    if (effects.savings !== undefined) { this.savings += effects.savings; applied.push(`储蓄${effects.savings > 0 ? '+' : ''}${effects.savings}`); }
+    if (effects.debt !== undefined) { this.debt += effects.debt; applied.push(`负债${effects.debt > 0 ? '+' : ''}${effects.debt}`); }
+    if (effects.salary !== undefined) { this.salary = effects.salary; applied.push(`工资调整为¥${effects.salary}`); }
+    if (effects.health !== undefined) { this.health = Math.max(0, Math.min(this.maxHealth, this.health + effects.health)); applied.push(`健康${effects.health > 0 ? '+' : ''}${effects.health}`); }
+    if (effects.happiness !== undefined) { this.happiness = Math.max(0, Math.min(100, this.happiness + effects.happiness)); applied.push(`幸福${effects.happiness > 0 ? '+' : ''}${effects.happiness}`); }
+    if (effects.network !== undefined) { this.network = Math.max(0, Math.min(100, this.network + effects.network)); applied.push(`人脉${effects.network > 0 ? '+' : ''}${effects.network}`); }
+    if (effects.knowledge !== undefined) { this.knowledge = Math.max(0, Math.min(100, this.knowledge + effects.knowledge)); applied.push(`学识${effects.knowledge > 0 ? '+' : ''}${effects.knowledge}`); }
+    if (effects.investmentMultiplier) { this.investments = Math.round(this.investments * effects.investmentMultiplier); applied.push(`投资×${effects.investmentMultiplier}`); }
     if (effects.unlockFund) this.unlocks.fund = true;
     if (effects.unlockStock) this.unlocks.stock = true;
     if (effects.unlockProperty) this.unlocks.property = true;
     if (effects.unlockManagement) this.unlocks.management = true;
     if (effects.unlockStartup) this.unlocks.startup = true;
     if (effects.riskTransfer) this.unlocks.riskTransfer = true;
-    if (effects.careerLevel) {
-      this.careerLevel += effects.careerLevel;
-      applied.push(`职业等级+${effects.careerLevel}`);
-    }
+    if (effects.careerLevel) { this.careerLevel += effects.careerLevel; applied.push(`职业等级+${effects.careerLevel}`); }
+    // 【P1修复】副业收入基础值
+    if (effects.sideIncomeBase !== undefined) { this.sideIncome = effects.sideIncomeBase; applied.push(`副业收入¥${effects.sideIncomeBase}/月`); }
+    // 【P1修复】房产价值
+    if (effects.propertyValue !== undefined) { this.propertyValue += effects.propertyValue; this.hasHouse = true; applied.push(`获得房产¥${Math.round(effects.propertyValue).toLocaleString()}`); }
+    // 【P1修复】基础支出倍率
+    if (effects.baseExpenseMultiplier) { this.modifiers.expenseMultiplier *= effects.baseExpenseMultiplier; applied.push(`基础支出×${effects.baseExpenseMultiplier}`); }
+    // 【P1修复】工资起点倍率
+    if (effects.salaryStartMultiplier) { this.salaryStartMultiplier = effects.salaryStartMultiplier; applied.push(`职业起点工资×${effects.salaryStartMultiplier}`); }
+    // 【P1修复】工资上限倍率
+    if (effects.salaryCapMultiplier) { this.salaryCapMultiplier = effects.salaryCapMultiplier; applied.push(`工资上限×${effects.salaryCapMultiplier}`); }
     return applied;
   }
 
