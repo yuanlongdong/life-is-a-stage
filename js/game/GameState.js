@@ -9,6 +9,7 @@ const GamePhase = {
   EVENT: 'event',
   SKILL_TREE: 'skill_tree',
   INVEST: 'invest',
+  RELATIONSHIPS: 'relationships',
   GAME_OVER: 'game_over',
   YEAR_REVIEW: 'year_review',
   COLLECTION: 'collection',
@@ -27,6 +28,7 @@ class GameState {
     this.skillPoints = 0;
     this.totalMonthsPlayed = 0;
     this.notifications = [];
+    this.relationshipManager = new RelationshipManager();
   }
 
   startNewGame(scenario) {
@@ -41,6 +43,7 @@ class GameState {
     this.scenarioStartAge = this.player.age;
     this.memoryInherited = false;
     this.endingRecorded = false;
+    this.relationshipManager = new RelationshipManager();
 
     if (typeof CollectionManager !== 'undefined') {
       CollectionManager.recordScenarioStart(scenario);
@@ -49,7 +52,6 @@ class GameState {
     this.player.addEventLog(`🎬 人生大幕拉开！你以【${scenario.name}】的身份开始了新的人生。`);
     this.player.addEventLog(`💡 ${scenario.tips}`);
 
-    // 【P1记忆继承】如果有上一局数据且记忆等级>=1，先显示上一局回顾
     if (typeof CollectionManager !== 'undefined' &&
         CollectionManager.hasLastGame() &&
         CollectionManager.getMemoryLevel() >= 1) {
@@ -68,7 +70,6 @@ class GameState {
     return this.player;
   }
 
-  // 【P1记忆继承】从上一局回顾继续游戏
   continueAfterLastGameReview() {
     this.phase = GamePhase.PLAYING;
     const initialLifeChoice = LIFE_CHOICES[this.player.age];
@@ -107,6 +108,7 @@ class GameState {
     }
 
     this.applyNaturalDecay();
+    this.updateRelationships();
     this.player.recordMonthlyData(month, year);
 
     this.currentMonth++;
@@ -132,6 +134,74 @@ class GameState {
     }
 
     return { income, expense, balance, event, gameOver: null };
+  }
+
+  // 人际关系每月更新
+  updateRelationships() {
+    if (!this.relationshipManager) return;
+    this.relationshipManager.updateFriendships();
+    this.relationshipManager.updatePartner();
+    this.relationshipManager.updateChildren(this.player);
+    if (Math.random() < 0.1) {
+      this.triggerRandomRelationshipEvent();
+    }
+  }
+
+  // 触发随机关联事件
+  triggerRandomRelationshipEvent() {
+    const rm = this.relationshipManager;
+    const eventTypes = [];
+    if (rm.friends.length > 0) eventTypes.push('friend_help', 'friend_opportunity');
+    if (rm.friends.length < 10 && this.player.network > 20) eventTypes.push('make_friend');
+    if (rm.partner && rm.partner.status === 'dating') eventTypes.push('date_reminder');
+    if (rm.partner && rm.partner.status === 'married' && rm.children.length < 3 && this.player.age >= 25 && this.player.age <= 40) eventTypes.push('have_child_opportunity');
+    if (eventTypes.length === 0) return;
+
+    const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+    if (eventType === 'make_friend') {
+      const contexts = ['work', 'social', 'hobby', 'online'];
+      const context = contexts[Math.floor(Math.random() * contexts.length)];
+      const friend = rm.makeFriend(this.player, context);
+      this.addNotification(`🤝 认识了新朋友：${friend.name}`);
+      this.player.network = Math.min(100, this.player.network + 2);
+    } else if (eventType === 'friend_help') {
+      const friend = rm.friends[Math.floor(Math.random() * rm.friends.length)];
+      const helpEvent = rm.friendAsksForHelp(friend.id, this.player);
+      if (helpEvent) {
+        this.pendingEvent = {
+          id: 'rel_friend_help', category: 'relationship', name: `${friend.name}求助`, icon: '🆘',
+          description: helpEvent.description,
+          choices: helpEvent.choices.map(c => ({ text: c.text, resultText: '', effects: {}, customEffect: c.effect }))
+        };
+        this.phase = GamePhase.EVENT;
+      }
+    } else if (eventType === 'friend_opportunity') {
+      const friend = rm.friends[Math.floor(Math.random() * rm.friends.length)];
+      const opportunity = rm.friendBringsOpportunity(friend.id, this.player);
+      if (opportunity) {
+        this.pendingEvent = {
+          id: 'rel_friend_opportunity', category: 'relationship', name: opportunity.title, icon: '✨',
+          description: opportunity.description,
+          choices: [
+            { text: '接受机会', resultText: '', effects: {}, customEffect: (p) => { const result = opportunity.effect(p); return result.message; } },
+            { text: '婉拒', resultText: '你婉拒了这个机会。', effects: {} }
+          ]
+        };
+        this.phase = GamePhase.EVENT;
+      }
+    } else if (eventType === 'date_reminder') {
+      this.addNotification(`💕 记得和${rm.partner.name}约会，增进感情`);
+    } else if (eventType === 'have_child_opportunity') {
+      this.pendingEvent = {
+        id: 'rel_have_child', category: 'relationship', name: '想要个孩子？', icon: '👶',
+        description: `你和${rm.partner.name}讨论着要不要个孩子。`,
+        choices: [
+          { text: '生孩子', resultText: '', effects: {}, customEffect: (p) => { const result = rm.haveChild(p); return result.success ? result.message : '这次没有成功怀孕。'; } },
+          { text: '再等等', resultText: '你们决定再等等。', effects: {} }
+        ]
+      };
+      this.phase = GamePhase.EVENT;
+    }
   }
 
   processLearningQueue() {
@@ -261,9 +331,14 @@ class GameState {
       if (choice.midTermEffects) this.applyLongTermEffects(choice.midTermEffects);
       this.player.addEventLog(`🚦 【人生岔路·${age}岁】你选择了「${choice.shortName || choice.text}」。这个选择将改变你接下来的人生轨迹。`);
     }
-    const applied = this.player.applyEffects(choice.effects || choice.immediateEffects || {});
-    this.player.addEventLog(`${this.pendingEvent.icon} ${this.pendingEvent.name}：${choice.resultText || choice.text}`);
-    const result = { success: true, event: this.pendingEvent, choice, applied, resultText: choice.resultText };
+    if (choice.customEffect) {
+      const customResult = choice.customEffect(this.player);
+      if (customResult) this.player.addEventLog(`${this.pendingEvent.icon} ${this.pendingEvent.name}：${customResult}`);
+    } else {
+      const applied = this.player.applyEffects(choice.effects || choice.immediateEffects || {});
+      this.player.addEventLog(`${this.pendingEvent.icon} ${this.pendingEvent.name}：${choice.resultText || choice.text}`);
+    }
+    const result = { success: true, event: this.pendingEvent, choice, resultText: choice.resultText };
     this.pendingEvent = null;
     this.phase = GamePhase.PLAYING;
     return result;
