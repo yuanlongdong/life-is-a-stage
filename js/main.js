@@ -1,7 +1,9 @@
 /**
  * 《人生如戏》主入口
+ * Life is a Stage - Main Entry
  */
-let game = null;
+// 全局游戏实例
+var game = null;
 class Game {
   constructor() {
     this.state = new GameState();
@@ -146,6 +148,7 @@ class Game {
 }
 document.addEventListener('DOMContentLoaded', function() {
   game = new Game();
+  window.game = game;
   game.init();
 });
 if (typeof module !== 'undefined' && module.exports) {
