@@ -1,5 +1,5 @@
 /**
- * UI管理器 - 负责所有界面渲染和交互
+ * UI管理器 v0.7 - 负责所有界面渲染和交互
  */
 class UIManager {
   constructor(gameState) {
@@ -260,9 +260,7 @@ class UIManager {
               <span>💰 ¥${skill.cost}</span>
               <span>⏱️ ${skill.duration}月</span>
             </div>
-            <button class="btn-skill ${btnClass}"
-                    onclick="game.learnSkill('${skill.id}')"
-                    ${!canLearn ? 'disabled' : ''}>
+            <button class="btn-skill ${btnClass}" onclick="game.learnSkill('${skill.id}')" ${!canLearn ? 'disabled' : ''}>
               ${statusText}
             </button>
           </div>
@@ -298,9 +296,7 @@ class UIManager {
               <span>💰 ¥${skill.costPerLevel}/级</span>
               <span>⏱️ ${skill.durationPerLevel}月/级</span>
             </div>
-            <button class="btn-skill ${btnClass}"
-                    onclick="game.developSkill('${skill.id}')"
-                    ${!canDevelop ? 'disabled' : ''}>
+            <button class="btn-skill ${btnClass}" onclick="game.developSkill('${skill.id}')" ${!canDevelop ? 'disabled' : ''}>
               ${statusText}
             </button>
           </div>
@@ -341,18 +337,9 @@ class UIManager {
           <div class="skill-money">💰 ¥${this.formatNumber(p.savings)}</div>
         </div>
         <div class="invest-overview">
-          <div class="io-item">
-            <div class="io-label">储蓄</div>
-            <div class="io-value">¥${this.formatNumber(p.savings)}</div>
-          </div>
-          <div class="io-item">
-            <div class="io-label">投资</div>
-            <div class="io-value">¥${this.formatNumber(p.investments)}</div>
-          </div>
-          <div class="io-item">
-            <div class="io-label">负债</div>
-            <div class="io-value negative">¥${this.formatNumber(p.debt)}</div>
-          </div>
+          <div class="io-item"><div class="io-label">储蓄</div><div class="io-value">¥${this.formatNumber(p.savings)}</div></div>
+          <div class="io-item"><div class="io-label">投资</div><div class="io-value">¥${this.formatNumber(p.investments)}</div></div>
+          <div class="io-item"><div class="io-label">负债</div><div class="io-value negative">¥${this.formatNumber(p.debt)}</div></div>
         </div>
         <div class="invest-section">
           <h3>📈 投资产品</h3>
@@ -360,10 +347,7 @@ class UIManager {
             <div class="invest-card">
               <div class="invest-header">
                 <span class="invest-icon">🏦</span>
-                <div>
-                  <div class="invest-name">货币基金</div>
-                  <div class="invest-desc">年化约3%，低风险</div>
-                </div>
+                <div><div class="invest-name">货币基金</div><div class="invest-desc">年化约3%，低风险</div></div>
               </div>
               <div class="invest-actions">
                 <button class="btn-invest" onclick="game.invest(500, 'fund')">投¥500</button>
@@ -373,10 +357,7 @@ class UIManager {
             <div class="invest-card ${!p.unlocks.fund ? 'locked' : ''}">
               <div class="invest-header">
                 <span class="invest-icon">📈</span>
-                <div>
-                  <div class="invest-name">指数基金 ${!p.unlocks.fund ? '🔒' : ''}</div>
-                  <div class="invest-desc">年化约8%，中风险（需学习基金定投）</div>
-                </div>
+                <div><div class="invest-name">指数基金 ${!p.unlocks.fund ? '🔒' : ''}</div><div class="invest-desc">年化约8%，中风险（需学习基金定投）</div></div>
               </div>
               <div class="invest-actions">
                 <button class="btn-invest" onclick="game.invest(500, 'fund')" ${!p.unlocks.fund ? 'disabled' : ''}>投¥500</button>
@@ -386,10 +367,7 @@ class UIManager {
             <div class="invest-card ${!p.unlocks.stock ? 'locked' : ''}">
               <div class="invest-header">
                 <span class="invest-icon">📊</span>
-                <div>
-                  <div class="invest-name">股票投资 ${!p.unlocks.stock ? '🔒' : ''}</div>
-                  <div class="invest-desc">年化约12%，高风险（需学习股票基础）</div>
-                </div>
+                <div><div class="invest-name">股票投资 ${!p.unlocks.stock ? '🔒' : ''}</div><div class="invest-desc">年化约12%，高风险（需学习股票基础）</div></div>
               </div>
               <div class="invest-actions">
                 <button class="btn-invest" onclick="game.invest(1000, 'stock')" ${!p.unlocks.stock ? 'disabled' : ''}>投¥1000</button>
@@ -426,24 +404,16 @@ class UIManager {
       let disabled = false;
       let reqText = '';
       if (choice.requirement) {
-        if (choice.requirement.minNetwork && this.game.player.network < choice.requirement.minNetwork) {
-          disabled = true;
-          reqText = `（需人脉≥${choice.requirement.minNetwork}）`;
-        }
-        if (choice.requirement.minSavings && this.game.player.savings < choice.requirement.minSavings) {
-          disabled = true;
-          reqText = `（需储蓄≥¥${this.formatNumber(choice.requirement.minSavings)}）`;
-        }
+        if (choice.requirement.minNetwork && this.game.player.network < choice.requirement.minNetwork) { disabled = true; reqText = `（需人脉≥${choice.requirement.minNetwork}）`; }
+        if (choice.requirement.minSavings && this.game.player.savings < choice.requirement.minSavings) { disabled = true; reqText = `（需储蓄≥¥${this.formatNumber(choice.requirement.minSavings)}）`; }
       }
       if (isLifeChoice) {
         const age = this.game.player ? this.game.player.age : 0;
-        const experienced = typeof CollectionManager !== 'undefined' &&
-                           CollectionManager.hasExperiencedChoice(age, choice.id);
+        const experienced = typeof CollectionManager !== 'undefined' && CollectionManager.hasExperiencedChoice(age, choice.id);
         const dejaVuBadge = experienced ? '<span class="deja-vu-badge">✨ 似曾相识</span>' : '';
         return `
           <button class="event-choice life-choice ${disabled ? 'disabled' : ''} ${experienced ? 'experienced' : ''}"
-                  onclick="game.resolveEvent(${index})"
-                  ${disabled ? 'disabled' : ''}>
+                  onclick="game.resolveEvent(${index})" ${disabled ? 'disabled' : ''}>
             <div class="lc-icon">${choice.icon || '🔀'}</div>
             <div class="lc-content">
               <div class="lc-title">${choice.shortName || choice.text} ${dejaVuBadge}</div>
@@ -454,9 +424,7 @@ class UIManager {
         `;
       }
       return `
-        <button class="event-choice ${disabled ? 'disabled' : ''}"
-                onclick="game.resolveEvent(${index})"
-                ${disabled ? 'disabled' : ''}>
+        <button class="event-choice ${disabled ? 'disabled' : ''}" onclick="game.resolveEvent(${index})" ${disabled ? 'disabled' : ''}>
           ${choice.text} ${reqText}
         </button>
       `;
@@ -490,40 +458,58 @@ class UIManager {
           <h3 class="event-title">${p.age}岁了！</h3>
           <p class="event-desc">回顾过去一年：</p>
           <div class="year-stats">
-            <div class="ys-item">
-              <div class="ys-label">总收入</div>
-              <div class="ys-value positive">¥${this.formatNumber(totalIncome)}</div>
-            </div>
-            <div class="ys-item">
-              <div class="ys-label">总支出</div>
-              <div class="ys-value negative">¥${this.formatNumber(totalExpense)}</div>
-            </div>
-            <div class="ys-item">
-              <div class="ys-label">年度结余</div>
-              <div class="ys-value ${totalSaved >= 0 ? 'positive' : 'negative'}">${totalSaved >= 0 ? '+' : ''}¥${this.formatNumber(totalSaved)}</div>
-            </div>
-            <div class="ys-item">
-              <div class="ys-label">净资产</div>
-              <div class="ys-value">¥${this.formatNumber(p.getNetWorth())}</div>
-            </div>
+            <div class="ys-item"><div class="ys-label">总收入</div><div class="ys-value positive">¥${this.formatNumber(totalIncome)}</div></div>
+            <div class="ys-item"><div class="ys-label">总支出</div><div class="ys-value negative">¥${this.formatNumber(totalExpense)}</div></div>
+            <div class="ys-item"><div class="ys-label">年度结余</div><div class="ys-value ${totalSaved >= 0 ? 'positive' : 'negative'}">${totalSaved >= 0 ? '+' : ''}¥${this.formatNumber(totalSaved)}</div></div>
+            <div class="ys-item"><div class="ys-label">净资产</div><div class="ys-value">¥${this.formatNumber(p.getNetWorth())}</div></div>
           </div>
           <button class="event-choice" onclick="game.continueAfterYearReview()">继续人生 →</button>
         </div>
       </div>
     `;
   }
+  // v0.7 游戏结束界面 - 稀有度+未体验结局+重开钩子
   renderGameOver(reason) {
     const p = this.game.player;
     const ending = this.game.calculateEnding();
     const totalMonths = this.game.totalMonthsPlayed;
     const yearsPlayed = Math.floor(totalMonths / 12);
+    const rarityConfig = {
+      legendary: { color: '#FFD700', label: '传奇', bg: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,165,0,0.3))' },
+      epic: { color: '#9B59B6', label: '史诗', bg: 'linear-gradient(135deg, rgba(155,89,182,0.2), rgba(142,68,173,0.3))' },
+      rare: { color: '#3498DB', label: '稀有', bg: 'linear-gradient(135deg, rgba(52,152,219,0.2), rgba(41,128,185,0.3))' },
+      common: { color: '#95A5A6', label: '普通', bg: 'linear-gradient(135deg, rgba(149,165,166,0.15), rgba(127,140,141,0.2))' }
+    };
+    const rarity = ending.rarity || 'common';
+    const rc = rarityConfig[rarity] || rarityConfig.common;
+    let lockedEndingsHtml = '';
+    if (ending.lockedEndings && ending.lockedEndings.length > 0) {
+      const showCount = Math.min(3, ending.lockedEndings.length);
+      const lockedItems = ending.lockedEndings.slice(0, showCount);
+      lockedEndingsHtml = `
+        <div class="locked-endings-section">
+          <div class="le-title">🔮 还有这些结局你没玩到</div>
+          <div class="le-subtitle">总共有${ending.lockedEndings.length}种结局等你探索</div>
+          <div class="le-list">
+            ${lockedItems.map(e => `
+              <div class="le-item">
+                <span class="le-icon">${e.icon}</span>
+                <span class="le-name">${e.name}</span>
+                <span class="le-hint">${e.hint}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
     return `
       <div class="screen gameover-screen">
         <div class="gameover-content">
           <div class="gameover-icon">🎬</div>
           <h2>人生谢幕</h2>
           <p class="gameover-reason">${reason.message}</p>
-          <div class="ending-card">
+          <div class="ending-card" style="background:${rc.bg};border-color:${rc.color}">
+            <div class="ending-rarity" style="color:${rc.color}">【${rc.label}结局】</div>
             <div class="ending-name">${ending.name}</div>
             <div class="ending-desc">${ending.description}</div>
           </div>
@@ -540,26 +526,15 @@ class UIManager {
               <div class="ph-cta">再开一局，试试不同的选择？</div>
             </div>
           ` : ''}
+          ${lockedEndingsHtml}
           <div class="final-stats">
-            <div class="fs-item">
-              <div class="fs-label">享年</div>
-              <div class="fs-value">${p.age}岁</div>
-            </div>
-            <div class="fs-item">
-              <div class="fs-label">最终净资产</div>
-              <div class="fs-value">¥${this.formatNumber(p.getNetWorth())}</div>
-            </div>
-            <div class="fs-item">
-              <div class="fs-label">学会技能</div>
-              <div class="fs-value">${Object.keys(p.learnedSkills).length}个</div>
-            </div>
-            <div class="fs-item">
-              <div class="fs-label">获得成就</div>
-              <div class="fs-value">${p.achievements.length}个</div>
-            </div>
+            <div class="fs-item"><div class="fs-label">享年</div><div class="fs-value">${p.age}岁</div></div>
+            <div class="fs-item"><div class="fs-label">最终净资产</div><div class="fs-value">¥${this.formatNumber(p.getNetWorth())}</div></div>
+            <div class="fs-item"><div class="fs-label">学会技能</div><div class="fs-value">${Object.keys(p.learnedSkills).length}个</div></div>
+            <div class="fs-item"><div class="fs-label">获得成就</div><div class="fs-value">${p.achievements.length}个</div></div>
           </div>
           <div class="gameover-actions">
-            <button class="btn btn-primary" onclick="game.restart()">🔄 重开新人生</button>
+            <button class="btn btn-primary pulse-glow" onclick="game.restart()">🔄 重开新人生</button>
             <button class="btn btn-secondary" onclick="game.backToMenu()">🏠 返回主菜单</button>
           </div>
         </div>
@@ -567,9 +542,7 @@ class UIManager {
     `;
   }
   formatNumber(num) {
-    if (Math.abs(num) >= 10000) {
-      return (num / 10000).toFixed(1) + '万';
-    }
+    if (Math.abs(num) >= 10000) { return (num / 10000).toFixed(1) + '万'; }
     return Math.round(num).toLocaleString();
   }
   getScenarioIcon(id) {
@@ -581,12 +554,7 @@ class UIManager {
     const memoryLevel = this.game.memoryLevel || 1;
     if (!summary) return '';
     const memoryLevelNames = ['', '似曾相识', '模糊预感', '清晰记忆'];
-    const memoryLevelDesc = [
-      '',
-      '你隐约记得上一段人生的一些片段...',
-      '你能模糊预感到接下来会发生什么...',
-      '你清晰地记得上一段人生的每一个关键选择...'
-    ];
+    const memoryLevelDesc = ['', '你隐约记得上一段人生的一些片段...', '你能模糊预感到接下来会发生什么...', '你清晰地记得上一段人生的每一个关键选择...'];
     const choicesHtml = summary.lifeChoiceHistory && summary.lifeChoiceHistory.length > 0
       ? summary.lifeChoiceHistory.map(c => `
           <div class="review-choice">
@@ -615,26 +583,11 @@ class UIManager {
           <h3 class="event-title">记忆回响</h3>
           <p class="memory-desc">${memoryLevelDesc[memoryLevel] || '你隐约记得上一段人生...'}</p>
           <div class="review-summary">
-            <div class="review-row">
-              <span class="review-label">上一局身份</span>
-              <span class="review-value">${summary.scenarioName}</span>
-            </div>
-            <div class="review-row">
-              <span class="review-label">最终结局</span>
-              <span class="review-value">${summary.endingName}</span>
-            </div>
-            <div class="review-row">
-              <span class="review-label">享年</span>
-              <span class="review-value">${summary.finalAge}岁</span>
-            </div>
-            <div class="review-row">
-              <span class="review-label">最终净资产</span>
-              <span class="review-value ${summary.finalNetWorth >= 0 ? 'positive' : 'negative'}">¥${this.formatNumber(summary.finalNetWorth)}</span>
-            </div>
-            <div class="review-row">
-              <span class="review-label">学会技能</span>
-              <span class="review-value">${summary.learnedSkills}个</span>
-            </div>
+            <div class="review-row"><span class="review-label">上一局身份</span><span class="review-value">${summary.scenarioName}</span></div>
+            <div class="review-row"><span class="review-label">最终结局</span><span class="review-value">${summary.endingName}</span></div>
+            <div class="review-row"><span class="review-label">享年</span><span class="review-value">${summary.finalAge}岁</span></div>
+            <div class="review-row"><span class="review-label">最终净资产</span><span class="review-value ${summary.finalNetWorth >= 0 ? 'positive' : 'negative'}">¥${this.formatNumber(summary.finalNetWorth)}</span></div>
+            <div class="review-row"><span class="review-label">学会技能</span><span class="review-value">${summary.learnedSkills}个</span></div>
           </div>
           <div class="review-choices-section">
             <div class="review-choices-title">🔀 上一局的关键选择</div>
@@ -642,17 +595,12 @@ class UIManager {
           </div>
           ${unexperiencedHint}
           <div class="review-cta">这次，你想做出不同的选择吗？</div>
-          <button class="event-choice memory-continue-btn" onclick="game.continueAfterLastGameReview()">
-            🎬 开启新的人生 →
-          </button>
+          <button class="event-choice memory-continue-btn" onclick="game.continueAfterLastGameReview()">🎬 开启新的人生 →</button>
         </div>
       </div>
     `;
   }
-  selectSkillCategory(cat) {
-    this.selectedCategory = cat;
-    this.game.render();
-  }
+  selectSkillCategory(cat) { this.selectedCategory = cat; this.game.render(); }
   renderCollection() {
     const collection = typeof CollectionManager !== 'undefined' ? CollectionManager.getCollection() : CollectionManager.getEmptyCollection();
     const progress = typeof CollectionManager !== 'undefined' ? CollectionManager.getProgress() : { overall: 0, scenarios: {collected:0,total:6}, endings: {collected:0,total:5}, lifeChoices: {collected:0,total:15} };
@@ -705,12 +653,8 @@ class UIManager {
         </div>
       `;
     }).join('');
-    const achievements = typeof CollectionManager !== 'undefined' && typeof ACHIEVEMENTS !== 'undefined'
-      ? CollectionManager.getAchievements()
-      : [];
-    const achievementProgress = typeof CollectionManager !== 'undefined'
-      ? CollectionManager.getAchievementProgress()
-      : { total: 0, unlocked: 0, percentage: 0 };
+    const achievements = typeof CollectionManager !== 'undefined' && typeof ACHIEVEMENTS !== 'undefined' ? CollectionManager.getAchievements() : [];
+    const achievementProgress = typeof CollectionManager !== 'undefined' ? CollectionManager.getAchievementProgress() : { total: 0, unlocked: 0, percentage: 0 };
     const achievementCategories = ['首次', '收集', '挑战', '重开'];
     const achievementsByCategoryHtml = achievementCategories.map(cat => {
       const catAchievements = achievements.filter(a => a.category === cat);
@@ -737,49 +681,21 @@ class UIManager {
           <button class="btn-back" onclick="game.backToMenu()">← 返回</button>
           <h2>📚 人生图鉴</h2>
           <div class="collection-progress">
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: ${progress.overall}%"></div>
-            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width: ${progress.overall}%"></div></div>
             <span class="progress-text">总收集度 ${progress.overall}%</span>
           </div>
         </div>
         <div class="collection-stats">
-          <div class="stat-card">
-            <div class="stat-value">${collection.stats.totalGames}</div>
-            <div class="stat-label">总局数</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">${progress.scenarios.collected}/${progress.scenarios.total}</div>
-            <div class="stat-label">剧本</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">${progress.endings.collected}/${progress.endings.total}</div>
-            <div class="stat-label">结局</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">${this.formatNumber(collection.stats.bestNetWorth)}</div>
-            <div class="stat-label">最高净资产</div>
-          </div>
+          <div class="stat-card"><div class="stat-value">${collection.stats.totalGames}</div><div class="stat-label">总局数</div></div>
+          <div class="stat-card"><div class="stat-value">${progress.scenarios.collected}/${progress.scenarios.total}</div><div class="stat-label">剧本</div></div>
+          <div class="stat-card"><div class="stat-value">${progress.endings.collected}/${progress.endings.total}</div><div class="stat-label">结局</div></div>
+          <div class="stat-card"><div class="stat-value">${this.formatNumber(collection.stats.bestNetWorth)}</div><div class="stat-label">最高净资产</div></div>
         </div>
-        <div class="collection-section">
-          <h3>🎭 人生剧本</h3>
-          <div class="collection-grid">${scenariosHtml}</div>
-        </div>
-        <div class="collection-section">
-          <h3>🏆 人生结局</h3>
-          <div class="collection-grid">${endingsHtml}</div>
-        </div>
-        <div class="collection-section">
-          <h3>🚦 人生岔路</h3>
-          ${choicesHtml}
-        </div>
-        <div class="collection-section">
-          <h3>🏆 成就收集 <span class="achievement-progress">${achievementProgress.unlocked}/${achievementProgress.total}</span></h3>
-          ${achievementsByCategoryHtml}
-        </div>
-        <div class="collection-footer">
-          <p>每一次重开，都是一次新的人生。你体验过的所有选择，都记录在这里。</p>
-        </div>
+        <div class="collection-section"><h3>🎭 人生剧本</h3><div class="collection-grid">${scenariosHtml}</div></div>
+        <div class="collection-section"><h3>🏆 人生结局</h3><div class="collection-grid">${endingsHtml}</div></div>
+        <div class="collection-section"><h3>🚦 人生岔路</h3>${choicesHtml}</div>
+        <div class="collection-section"><h3>🏆 成就收集 <span class="achievement-progress">${achievementProgress.unlocked}/${achievementProgress.total}</span></h3>${achievementsByCategoryHtml}</div>
+        <div class="collection-footer"><p>每一次重开，都是一次新的人生。你体验过的所有选择，都记录在这里。</p></div>
       </div>
     `;
   }
@@ -795,9 +711,7 @@ class UIManager {
             <div class="friend-meta">${f.meetContext} · ${f.meetAge}岁认识</div>
           </div>
           <div class="friend-relationship">
-            <div class="relationship-bar">
-              <div class="relationship-fill" style="width:${f.relationship}%;background:${f.relationship >= 70 ? '#52C41A' : f.relationship >= 40 ? '#FAAD14' : '#EA6668'}"></div>
-            </div>
+            <div class="relationship-bar"><div class="relationship-fill" style="width:${f.relationship}%;background:${f.relationship >= 70 ? '#52C41A' : f.relationship >= 40 ? '#FAAD14' : '#EA6668'}"></div></div>
             <span class="relationship-value">${f.relationship}</span>
           </div>
           <button class="btn-contact" onclick="game.contactFriend('${f.id}')">📞 联系</button>
@@ -815,25 +729,16 @@ class UIManager {
             <div class="partner-occupation">${partner.occupation} · ${partner.personality}</div>
           </div>
           <div class="partner-relationship">
-            <div class="relationship-bar">
-              <div class="relationship-fill" style="width:${partner.relationship}%;background:#EAA7B2"></div>
-            </div>
+            <div class="relationship-bar"><div class="relationship-fill" style="width:${partner.relationship}%;background:#EAA7B2"></div></div>
             <span class="relationship-value">${partner.relationship}</span>
           </div>
           <div class="partner-actions">
-            ${partner.status === 'dating' ? `
-              <button class="btn-date" onclick="game.goOnDate()">🌹 约会</button>
-              <button class="btn-propose" onclick="game.propose()">💍 求婚</button>
-            ` : ''}
-            ${partner.status === 'married' ? `
-              <button class="btn-divorce" onclick="game.divorce()">💔 离婚</button>
-            ` : ''}
+            ${partner.status === 'dating' ? `<button class="btn-date" onclick="game.goOnDate()">🌹 约会</button><button class="btn-propose" onclick="game.propose()">💍 求婚</button>` : ''}
+            ${partner.status === 'married' ? `<button class="btn-divorce" onclick="game.divorce()">💔 离婚</button>` : ''}
           </div>
         </div>
       `;
-    } else {
-      partnerHtml = '<div class="empty-state">单身中，等待遇到对的人</div>';
-    }
+    } else { partnerHtml = '<div class="empty-state">单身中，等待遇到对的人</div>'; }
     const childrenHtml = rm.children.length > 0
       ? rm.children.map(c => `
         <div class="child-card">
@@ -842,14 +747,8 @@ class UIManager {
             <div class="child-meta">${Math.floor(c.age)}岁 · ${c.educationLevel}</div>
           </div>
           <div class="child-stats">
-            <div class="child-stat">
-              <span class="stat-label">教育质量</span>
-              <div class="relationship-bar"><div class="relationship-fill" style="width:${c.educationQuality}%;background:#9BBBF4"></div></div>
-            </div>
-            <div class="child-stat">
-              <span class="stat-label">亲子关系</span>
-              <div class="relationship-bar"><div class="relationship-fill" style="width:${c.relationship}%;background:#EAA7B2"></div></div>
-            </div>
+            <div class="child-stat"><span class="stat-label">教育质量</span><div class="relationship-bar"><div class="relationship-fill" style="width:${c.educationQuality}%;background:#9BBBF4"></div></div></div>
+            <div class="child-stat"><span class="stat-label">亲子关系</span><div class="relationship-bar"><div class="relationship-fill" style="width:${c.relationship}%;background:#EAA7B2"></div></div></div>
           </div>
           <div class="child-actions">
             <button class="btn-educate" onclick="game.investInChildEducation('${c.id}')">📚 教育投资</button>
@@ -860,34 +759,18 @@ class UIManager {
       : '<div class="empty-state">还没有孩子</div>';
     return `
       <div class="relationships-screen">
-        <div class="screen-header">
-          <h2>👥 人际关系</h2>
-          <button class="btn-back" onclick="game.backToGame()">← 返回</button>
-        </div>
+        <div class="screen-header"><h2>👥 人际关系</h2><button class="btn-back" onclick="game.backToGame()">← 返回</button></div>
         <div class="social-overview">
-          <div class="social-score">
-            <div class="score-label">社交分数</div>
-            <div class="score-value">${overview.socialScore}</div>
-            <div class="score-bar"><div class="score-fill" style="width:${overview.socialScore}%"></div></div>
-          </div>
+          <div class="social-score"><div class="score-label">社交分数</div><div class="score-value">${overview.socialScore}</div><div class="score-bar"><div class="score-fill" style="width:${overview.socialScore}%"></div></div></div>
           <div class="social-stats">
             <div class="stat-item"><span class="stat-icon">👥</span><span class="stat-text">朋友 ${overview.friends.total}（亲密${overview.friends.close}）</span></div>
             <div class="stat-item"><span class="stat-icon">💕</span><span class="stat-text">${overview.partner.description}</span></div>
             <div class="stat-item"><span class="stat-icon">👶</span><span class="stat-text">子女 ${overview.children.total}（在学${overview.children.inSchool}）</span></div>
           </div>
         </div>
-        <div class="relationship-section">
-          <h3>💕 伴侣</h3>
-          ${partnerHtml}
-        </div>
-        <div class="relationship-section">
-          <h3>👥 朋友 <span class="section-count">${rm.friends.length}</span></h3>
-          <div class="friends-list">${friendsHtml}</div>
-        </div>
-        <div class="relationship-section">
-          <h3>👶 子女 <span class="section-count">${rm.children.length}</span></h3>
-          <div class="children-list">${childrenHtml}</div>
-        </div>
+        <div class="relationship-section"><h3>💕 伴侣</h3>${partnerHtml}</div>
+        <div class="relationship-section"><h3>👥 朋友 <span class="section-count">${rm.friends.length}</span></h3><div class="friends-list">${friendsHtml}</div></div>
+        <div class="relationship-section"><h3>👶 子女 <span class="section-count">${rm.children.length}</span></h3><div class="children-list">${childrenHtml}</div></div>
       </div>
     `;
   }
@@ -906,115 +789,53 @@ class UIManager {
           <div class="property-card owned">
             <div class="property-header">
               <span class="property-icon">${prop.icon}</span>
-              <div class="property-info">
-                <div class="property-name">${prop.name}</div>
-                <div class="property-location">${prop.location} · ${prop.purchaseAge}岁购入</div>
-              </div>
+              <div class="property-info"><div class="property-name">${prop.name}</div><div class="property-location">${prop.location} · ${prop.purchaseAge}岁购入</div></div>
             </div>
             <div class="property-stats">
-              <div class="prop-stat">
-                <span class="prop-label">购入价</span>
-                <span class="prop-value">¥${(prop.purchasePrice/10000).toFixed(1)}万</span>
-              </div>
-              <div class="prop-stat">
-                <span class="prop-label">当前价</span>
-                <span class="prop-value">¥${(prop.currentValue/10000).toFixed(1)}万</span>
-              </div>
-              <div class="prop-stat">
-                <span class="prop-label">剩余贷款</span>
-                <span class="prop-value">¥${(prop.remainingLoan/10000).toFixed(1)}万</span>
-              </div>
-              <div class="prop-stat">
-                <span class="prop-label">月供</span>
-                <span class="prop-value">¥${prop.monthlyMortgage}</span>
-              </div>
+              <div class="prop-stat"><span class="prop-label">购入价</span><span class="prop-value">¥${(prop.purchasePrice/10000).toFixed(1)}万</span></div>
+              <div class="prop-stat"><span class="prop-label">当前价</span><span class="prop-value">¥${(prop.currentValue/10000).toFixed(1)}万</span></div>
+              <div class="prop-stat"><span class="prop-label">剩余贷款</span><span class="prop-value">¥${(prop.remainingLoan/10000).toFixed(1)}万</span></div>
+              <div class="prop-stat"><span class="prop-label">月供</span><span class="prop-value">¥${prop.monthlyMortgage}</span></div>
             </div>
-            <div class="loan-progress">
-              <div class="loan-bar"><div class="loan-fill" style="width:${paidPercent}%"></div></div>
-              <span class="loan-text">已还${paidPercent}%</span>
-            </div>
-            <div class="property-actions">
-              <button class="btn-sell" onclick="game.sellProperty('${prop.id}')">💰 出售</button>
-            </div>
+            <div class="loan-progress"><div class="loan-bar"><div class="loan-fill" style="width:${paidPercent}%"></div></div><span class="loan-text">已还${paidPercent}%</span></div>
+            <div class="property-actions"><button class="btn-sell" onclick="game.sellProperty('${prop.id}')">💰 出售</button></div>
           </div>
         `;
       }).join('');
-    } else {
-      ownedHtml = '<div class="empty-state">🏠 还没有房产，考虑买一套吗？</div>';
-    }
+    } else { ownedHtml = '<div class="empty-state">🏠 还没有房产，考虑买一套吗？</div>'; }
     const availableHtml = available.map(prop => {
       const disabled = !prop.canAfford ? 'disabled' : '';
       return `
         <div class="property-card available ${!prop.canAfford ? 'locked' : ''}">
           <div class="property-header">
             <span class="property-icon">${prop.icon}</span>
-            <div class="property-info">
-              <div class="property-name">${prop.name}</div>
-              <div class="property-desc">${prop.description}</div>
-            </div>
+            <div class="property-info"><div class="property-name">${prop.name}</div><div class="property-desc">${prop.description}</div></div>
           </div>
           <div class="property-stats">
-            <div class="prop-stat">
-              <span class="prop-label">总价</span>
-              <span class="prop-value">¥${(prop.price/10000).toFixed(1)}万</span>
-            </div>
-            <div class="prop-stat">
-              <span class="prop-label">首付</span>
-              <span class="prop-value">¥${(prop.downPayment/10000).toFixed(1)}万</span>
-            </div>
-            <div class="prop-stat">
-              <span class="prop-label">贷款</span>
-              <span class="prop-value">¥${(prop.loanAmount/10000).toFixed(1)}万</span>
-            </div>
-            <div class="prop-stat">
-              <span class="prop-label">月供</span>
-              <span class="prop-value">¥${prop.monthlyMortgage}</span>
-            </div>
+            <div class="prop-stat"><span class="prop-label">总价</span><span class="prop-value">¥${(prop.price/10000).toFixed(1)}万</span></div>
+            <div class="prop-stat"><span class="prop-label">首付</span><span class="prop-value">¥${(prop.downPayment/10000).toFixed(1)}万</span></div>
+            <div class="prop-stat"><span class="prop-label">贷款</span><span class="prop-value">¥${(prop.loanAmount/10000).toFixed(1)}万</span></div>
+            <div class="prop-stat"><span class="prop-label">月供</span><span class="prop-value">¥${prop.monthlyMortgage}</span></div>
           </div>
-          <div class="property-actions">
-            <button class="btn-buy" onclick="game.buyProperty('${prop.id}')" ${disabled}>
-              ${prop.canAfford ? '🏠 购买' : '💸 首付不足'}
-            </button>
-          </div>
+          <div class="property-actions"><button class="btn-buy" onclick="game.buyProperty('${prop.id}')" ${disabled}>${prop.canAfford ? '🏠 购买' : '💸 首付不足'}</button></div>
         </div>
       `;
     }).join('');
     const marketTrendText = overview.marketTrend > 0.2 ? '📈 上涨' : overview.marketTrend < -0.2 ? '📉 下跌' : '➡️ 平稳';
     return `
       <div class="property-screen">
-        <div class="screen-header">
-          <button class="btn-back" onclick="game.backToGame()">← 返回</button>
-          <h2>🏠 房产</h2>
-        </div>
+        <div class="screen-header"><button class="btn-back" onclick="game.backToGame()">← 返回</button><h2>🏠 房产</h2></div>
         <div class="property-overview">
           <div class="overview-grid">
-            <div class="overview-item">
-              <div class="overview-label">房产总值</div>
-              <div class="overview-value">¥${(overview.totalValue/10000).toFixed(1)}万</div>
-            </div>
-            <div class="overview-item">
-              <div class="overview-label">剩余贷款</div>
-              <div class="overview-value danger">¥${(overview.totalRemainingLoan/10000).toFixed(1)}万</div>
-            </div>
-            <div class="overview-item">
-              <div class="overview-label">房产净值</div>
-              <div class="overview-value success">¥${(overview.equity/10000).toFixed(1)}万</div>
-            </div>
-            <div class="overview-item">
-              <div class="overview-label">${overview.hasProperty ? '月供' : '房租'}</div>
-              <div class="overview-value">¥${overview.hasProperty ? overview.totalMonthlyMortgage : overview.rent}</div>
-            </div>
+            <div class="overview-item"><div class="overview-label">房产总值</div><div class="overview-value">¥${(overview.totalValue/10000).toFixed(1)}万</div></div>
+            <div class="overview-item"><div class="overview-label">剩余贷款</div><div class="overview-value danger">¥${(overview.totalRemainingLoan/10000).toFixed(1)}万</div></div>
+            <div class="overview-item"><div class="overview-label">房产净值</div><div class="overview-value success">¥${(overview.equity/10000).toFixed(1)}万</div></div>
+            <div class="overview-item"><div class="overview-label">${overview.hasProperty ? '月供' : '房租'}</div><div class="overview-value">¥${overview.hasProperty ? overview.totalMonthlyMortgage : overview.rent}</div></div>
           </div>
           <div class="market-trend">市场趋势：${marketTrendText}</div>
         </div>
-        <div class="property-section">
-          <h3>🏠 我的房产 <span class="section-count">${overview.propertyCount}</span></h3>
-          <div class="property-list">${ownedHtml}</div>
-        </div>
-        <div class="property-section">
-          <h3>🛒 可购买房产</h3>
-          <div class="property-list">${availableHtml}</div>
-        </div>
+        <div class="property-section"><h3>🏠 我的房产 <span class="section-count">${overview.propertyCount}</span></h3><div class="property-list">${ownedHtml}</div></div>
+        <div class="property-section"><h3>🛒 可购买房产</h3><div class="property-list">${availableHtml}</div></div>
       </div>
     `;
   }
