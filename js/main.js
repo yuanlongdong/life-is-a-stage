@@ -1,6 +1,5 @@
 /**
  * 《人生如戏》主入口
- * Life is a Stage - Main Entry
  */
 let game = null;
 class Game {
@@ -19,6 +18,7 @@ class Game {
       case GamePhase.SKILL_TREE: html = this.ui.renderSkillTree(); break;
       case GamePhase.INVEST: html = this.ui.renderInvest(); break;
       case GamePhase.RELATIONSHIPS: html = this.ui.renderRelationships(); break;
+      case GamePhase.PROPERTY: html = this.ui.renderProperty(); break;
       case GamePhase.GAME_OVER: html = this.ui.renderGameOver(this.state.gameOverReason || { message: '游戏结束' }); break;
       case GamePhase.COLLECTION: html = this.ui.renderCollection(); break;
       case GamePhase.LAST_GAME_REVIEW: html = this.ui.renderGame() + this.ui.renderLastGameReview(); break;
@@ -38,9 +38,7 @@ class Game {
     const scenario = SCENARIOS.find(s => s.id === scenarioId);
     if (scenario) { this.state.startNewGame(scenario); this.render(); }
   }
-  showAbout() {
-    alert('《人生如戏》\n\n一款人生模拟 × 财商教育 × 卡牌决策游戏。\n\n每个人都是自己人生的主角，你的每一个选择，都在书写剧本的下一幕。\n\n版本: v0.5 P2');
-  }
+  showAbout() { alert('《人生如戏》\n\n一款人生模拟 × 财商教育 × 卡牌决策游戏。\n\n版本: v0.6'); }
   showCollection() { this.state.phase = GamePhase.COLLECTION; this.render(); }
   loadGame() {
     if (this.state.load()) { this.render(); } else { alert('没有找到存档，请开始新人生。'); }
@@ -48,14 +46,31 @@ class Game {
   nextMonth() {
     if (this.state.phase !== GamePhase.PLAYING) return;
     const result = this.state.advanceMonth();
-    if (result.gameOver) { this.state.gameOverReason = result.gameOver; this.state.phase = GamePhase.GAME_OVER; }
+    if (result.gameOver) {
+      this.state.gameOverReason = result.gameOver;
+      this.state.phase = GamePhase.GAME_OVER;
+    }
     this.state.save();
     this.render();
   }
   showSkillTree() { this.state.phase = GamePhase.SKILL_TREE; this.render(); }
   showInvest() { this.state.phase = GamePhase.INVEST; this.render(); }
-  // 【P2】显示人际关系界面
   showRelationships() { this.state.phase = GamePhase.RELATIONSHIPS; this.render(); }
+  showProperty() { this.state.phase = GamePhase.PROPERTY; this.render(); }
+  buyProperty(propertyTypeId) {
+    const result = this.state.buyProperty(propertyTypeId);
+    if (result.success) { alert(`🏠 成功购买【${result.property.name}】！`); }
+    else { alert(`❌ ${result.message}`); }
+    this.render();
+  }
+  sellProperty(propertyId) {
+    const result = this.state.sellProperty(propertyId);
+    if (result.success) {
+      const profitText = result.netProfit >= 0 ? `盈利${(result.netProfit/10000).toFixed(1)}万` : `亏损${(Math.abs(result.netProfit)/10000).toFixed(1)}万`;
+      alert(`💰 出售成功，${profitText}！`);
+    } else { alert(`❌ ${result.message}`); }
+    this.render();
+  }
   backToGame() { this.state.phase = GamePhase.PLAYING; this.render(); }
   learnSkill(skillId) {
     const result = this.state.learnSkill(skillId);
@@ -82,7 +97,6 @@ class Game {
     if (!result.success) { alert(result.message); }
     this.render();
   }
-  // === 人际关系操作 ===
   contactFriend(friendId) {
     const result = this.state.relationshipManager.contactFriend(friendId, this.state.player);
     if (!result.success) { alert(result.message); }
@@ -95,8 +109,7 @@ class Game {
   }
   propose() {
     const result = this.state.relationshipManager.propose(this.state.player);
-    if (!result.success) { alert(result.message); }
-    else { alert('求婚成功！恭喜结婚！'); }
+    if (!result.success) { alert(result.message); } else { alert('求婚成功！恭喜结婚！'); }
     this.render();
   }
   divorce() {
@@ -117,18 +130,13 @@ class Game {
     if (!result.success) { alert(result.message); }
     this.render();
   }
-  // === 事件操作 ===
   resolveEvent(choiceIndex) {
     const result = this.state.resolveEventChoice(choiceIndex);
     if (result && !result.success) { alert(result.message); return; }
     this.render();
   }
   continueAfterYearReview() { this.state.phase = GamePhase.PLAYING; this.render(); }
-  // 【P1记忆继承】从上一局回顾继续游戏
-  continueAfterLastGameReview() {
-    this.state.continueAfterLastGameReview();
-    this.render();
-  }
+  continueAfterLastGameReview() { this.state.continueAfterLastGameReview(); this.render(); }
   restart() {
     this.state.clearSave();
     this.state.phase = GamePhase.SCENARIO_SELECT;
