@@ -26,8 +26,11 @@ const ACHIEVEMENTS = {
   },
   all_endings: {
     id: 'all_endings', name: '结局收藏家', icon: '📚',
-    description: '达成所有15种人生结局', category: '收集',
-    check: (c) => Object.keys(c.endings).length >= 15
+    description: '达成所有人生结局', category: '收集',
+    check: (c) => {
+      const totalEndings = typeof ENDINGS !== 'undefined' ? Object.keys(ENDINGS).length : 14;
+      return Object.keys(c.endings).length >= totalEndings;
+    }
   },
   all_choices: {
     id: 'all_choices', name: '选择收藏家', icon: '🔀',
@@ -271,7 +274,7 @@ const CollectionManager = {
   getProgress() {
     const collection = this.getCollection();
     const totalScenarios = SCENARIOS ? SCENARIOS.length : 6;
-    const totalEndings = typeof ENDINGS !== 'undefined' ? Object.keys(ENDINGS).length : 15; // 15种结局
+    const totalEndings = typeof ENDINGS !== 'undefined' ? Object.keys(ENDINGS).length : 14;
     const totalLifeChoices = Object.keys(LIFE_CHOICES).reduce((sum, age) => {
       return sum + LIFE_CHOICES[age].choices.length;
     }, 0);
