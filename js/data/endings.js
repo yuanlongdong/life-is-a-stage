@@ -4,7 +4,6 @@
  * 核心目标：激发重开欲望——"我还没玩到那个结局"
  * P4强化：parallelHooks更扎心、更有画面感、更具体
  */
-
 // 结局维度权重（用于计算最终结局）
 const ENDING_DIMENSIONS = {
   wealth: { name: '财富', weight: 0.25 },
@@ -14,7 +13,6 @@ const ENDING_DIMENSIONS = {
   growth: { name: '成长', weight: 0.10 },
   social: { name: '社交', weight: 0.15 }
 };
-
 // 结局类型定义
 const ENDINGS = {
   // ===== 顶级结局（传奇，需要多维度同时达标）=====
@@ -34,7 +32,6 @@ const ENDINGS = {
     ],
     unlockMessage: '🏆 解锁传奇结局：人生赢家！'
   },
-
   // ===== 财富类结局 =====
   financial_freedom: {
     id: 'financial_freedom',
@@ -54,7 +51,6 @@ const ENDINGS = {
     ],
     unlockMessage: '💰 解锁史诗结局：财务自由！'
   },
-
   property_tycoon: {
     id: 'property_tycoon',
     name: '🏰 房产大亨',
@@ -73,7 +69,6 @@ const ENDINGS = {
     ],
     unlockMessage: '🏰 解锁史诗结局：房产大亨！'
   },
-
   bankruptcy: {
     id: 'bankruptcy',
     name: '💔 破产人生',
@@ -90,7 +85,6 @@ const ENDINGS = {
     ],
     unlockMessage: '💔 解锁结局：破产人生（别灰心，再来一局！）'
   },
-
   // ===== 事业类结局 =====
   career_peak: {
     id: 'career_peak',
@@ -108,7 +102,6 @@ const ENDINGS = {
     ],
     unlockMessage: '🎖️ 解锁稀有结局：事业巅峰！'
   },
-
   startup_success: {
     id: 'startup_success',
     name: '🚀 创业成功',
@@ -125,7 +118,6 @@ const ENDINGS = {
     ],
     unlockMessage: '🚀 解锁史诗结局：创业成功！'
   },
-
   // ===== 家庭类结局 =====
   family_happiness: {
     id: 'family_happiness',
@@ -143,7 +135,6 @@ const ENDINGS = {
     ],
     unlockMessage: '👨‍👩‍👧 解锁稀有结局：家庭幸福！'
   },
-
   lonely_old_age: {
     id: 'lonely_old_age',
     name: '🌙 孤独终老',
@@ -160,7 +151,6 @@ const ENDINGS = {
     ],
     unlockMessage: '🌙 解锁结局：孤独终老（再开一局，试试不同的选择？）'
   },
-
   // ===== 健康类结局 =====
   healthy_longevity: {
     id: 'healthy_longevity',
@@ -178,7 +168,6 @@ const ENDINGS = {
     ],
     unlockMessage: '💪 解锁稀有结局：健康长寿！'
   },
-
   health_collapse: {
     id: 'health_collapse',
     name: '🏥 健康崩溃',
@@ -195,7 +184,6 @@ const ENDINGS = {
     ],
     unlockMessage: '🏥 解锁结局：健康崩溃（再开一局，这次注意健康？）'
   },
-
   // ===== 成长类结局 =====
   lifelong_learner: {
     id: 'lifelong_learner',
@@ -215,7 +203,6 @@ const ENDINGS = {
     ],
     unlockMessage: '📚 解锁稀有结局：终身学习者！'
   },
-
   // ===== 复合/特殊结局 =====
   peaceful: {
     id: 'peaceful',
@@ -233,7 +220,6 @@ const ENDINGS = {
     ],
     unlockMessage: '🏠 解锁结局：平凡安稳'
   },
-
   late_bloomer: {
     id: 'late_bloomer',
     name: '🌸 大器晚成',
@@ -250,7 +236,6 @@ const ENDINGS = {
     ],
     unlockMessage: '🌸 解锁史诗结局：大器晚成！'
   },
-
   spiritual_wealth: {
     id: 'spiritual_wealth',
     name: '🧘 精神富足',
@@ -268,7 +253,6 @@ const ENDINGS = {
     unlockMessage: '🧘 解锁稀有结局：精神富足！'
   }
 };
-
 // 计算各维度得分
 function calculateDimensionScores(player) {
   const p = player;
@@ -309,7 +293,6 @@ function calculateDimensionScores(player) {
     ))
   };
 }
-
 // 获取所有结局的解锁状态
 function getEndingUnlockStatus(player) {
   const stats = calculateDimensionScores(player);
@@ -323,12 +306,16 @@ function getEndingUnlockStatus(player) {
   }
   return status;
 }
-
 // 获取未解锁的结局列表（用于结局页面展示"还有这些结局你没玩到"）
 function getLockedEndings(player) {
-  const status = getEndingUnlockStatus(player);
+  // 优先检查CollectionManager中的游玩记录（玩家是否曾经玩到过这个结局）
+  let playedEndings = {};
+  if (typeof CollectionManager !== 'undefined' && typeof CollectionManager.getCollection === 'function') {
+    const collection = CollectionManager.getCollection();
+    playedEndings = collection.endings || {};
+  }
   return Object.entries(ENDINGS)
-    .filter(([id, unlocked]) => !unlocked)
+    .filter(([id, ending]) => !playedEndings[id])
     .map(([id, ending]) => ({
       id: ending.id,
       name: ending.name,
@@ -337,7 +324,6 @@ function getLockedEndings(player) {
       hint: getEndingHint(ending.id)
     }));
 }
-
 // 获取结局的解锁提示（不直接说条件，给模糊提示激发探索欲）
 function getEndingHint(endingId) {
   const hints = {
