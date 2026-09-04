@@ -7,6 +7,7 @@ class UIManager {
     this.currentScreen = 'menu';
     this.selectedCategory = 'career';
   }
+
   // 渲染主菜单
   renderMenu() {
     return `
@@ -28,6 +29,7 @@ class UIManager {
       </div>
     `;
   }
+
   // 渲染剧本选择
   renderScenarioSelect() {
     const scenariosHtml = SCENARIOS.map(s => `
@@ -44,6 +46,7 @@ class UIManager {
         </div>
       </div>
     `).join('');
+
     return `
       <div class="screen scenario-screen">
         <div class="screen-header">
@@ -56,7 +59,8 @@ class UIManager {
       </div>
     `;
   }
-  // 渲染主游戏界面
+
+  // 渲染主游戏界面（v0.9 重构版）
   renderGame() {
     const p = this.game.player;
     const income = p.getMonthlyIncome();
@@ -64,145 +68,281 @@ class UIManager {
     const balance = income.total - expense.total;
     const stage = this.game.getFinancialStage();
     const netWorth = p.getNetWorth();
-    const passive = p.passiveIncome + Math.round(p.investments * 0.006);
-    // 收入条
-    const incomeBars = this.renderIncomeBars(income);
-    const expenseBars = this.renderExpenseBars(expense);
-    // 学习队列
-    const learningQueueHtml = p.learningQueue.length > 0 ? `
-      <div class="learning-queue">
-        <div class="queue-title">📚 学习中</div>
-        ${p.learningQueue.map(item => {
-          const skill = item.type === 'learn' ? LEARNABLE_SKILLS[item.skillId] : DEVELOPABLE_SKILLS[item.skillId];
-          const progress = ((item.totalMonths - item.remainingMonths) / item.totalMonths * 100).toFixed(0);
-          return `
-            <div class="learning-item">
-              <span>${skill ? skill.icon : ''} ${skill ? skill.name : item.skillId}</span>
-              <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
-              <span class="progress-text">${item.remainingMonths}月</span>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    ` : '';
+
+    // 【v0.9】现金流可视化
+    const cashFlowVisual = this.renderCashFlowVisualization(income, expense, balance);
+
+    // 【v0.9】成长反馈
+    const growthFeedback = this.renderGrowthFeedback(p);
+
+    // 学习队列（简化为角标）
+    const learningCount = p.learningQueue.length;
+    const learningBadge = learningCount > 0 ? `<span class="learning-badge">${learningCount}</span>` : '';
+
     return `
-      <div class="screen game-screen">
-        <!-- 顶部状态栏 -->
-        <div class="top-bar">
-          <div class="player-info">
-            <div class="player-avatar">${this.getScenarioIcon(p.scenarioId)}</div>
-            <div class="player-details">
-              <div class="player-name">${p.scenarioName} · ${p.age}岁</div>
-              <div class="player-time">第${this.game.currentYear}年 第${this.game.currentMonth}月</div>
+      <div class="screen game-screen v2">
+        <!-- 顶部状态栏（简化） -->
+        <div class="top-bar-v2">
+          <div class="player-info-v2">
+            <span class="player-avatar-v2">${this.getScenarioIcon(p.scenarioId)}</span>
+            <div>
+              <div class="player-name-v2">${p.scenarioName} · ${p.age}岁</div>
+              <div class="player-time-v2">第${this.game.currentYear}年 ${this.game.currentMonth}月</div>
             </div>
           </div>
-          <div class="net-worth">
-            <div class="nw-label">净资产</div>
-            <div class="nw-value ${netWorth >= 0 ? 'positive' : 'negative'}">¥${this.formatNumber(netWorth)}</div>
+          <div class="net-worth-v2">
+            <div class="nw-label-v2">净资产</div>
+            <div class="nw-value-v2 ${netWorth >= 0 ? 'positive' : 'negative'}">¥${this.formatNumber(netWorth)}</div>
           </div>
         </div>
-        <!-- 属性条 -->
-        <div class="stats-bar">
-          <div class="stat-item" title="健康">
-            <span class="stat-icon">❤️</span>
-            <div class="stat-bar"><div class="stat-fill health" style="width:${p.health}%"></div></div>
-            <span class="stat-value">${p.health}</span>
+
+        <!-- 财务阶段（简化为小标签） -->
+        <div class="financial-stage-v2" style="background:${stage.color}15;border-color:${stage.color}40">
+          <span style="color:${stage.color}">${stage.icon || '📊'} ${stage.name}</span>
+          ${stage.progress !== undefined ? `<span class="stage-progress-v2">应急金 ${stage.progress}%</span>` : ''}
+        </div>
+
+        <!-- 【核心】现金流可视化 -->
+        <div class="cashflow-core">
+          ${cashFlowVisual}
+        </div>
+
+        <!-- 成长反馈区 -->
+        ${growthFeedback}
+
+        <!-- 简化属性条（3项：健康/幸福/学识，去掉人脉） -->
+        <div class="stats-bar-v2">
+          <div class="stat-item-v2" title="健康">
+            <span>❤️</span>
+            <div class="stat-bar-v2"><div class="stat-fill-v2 health" style="width:${p.health}%"></div></div>
+            <span class="stat-value-v2">${p.health}</span>
           </div>
-          <div class="stat-item" title="幸福">
-            <span class="stat-icon">😊</span>
-            <div class="stat-bar"><div class="stat-fill happiness" style="width:${p.happiness}%"></div></div>
-            <span class="stat-value">${p.happiness}</span>
+          <div class="stat-item-v2" title="幸福">
+            <span>😊</span>
+            <div class="stat-bar-v2"><div class="stat-fill-v2 happiness" style="width:${p.happiness}%"></div></div>
+            <span class="stat-value-v2">${p.happiness}</span>
           </div>
-          <div class="stat-item" title="人脉">
-            <span class="stat-icon">🤝</span>
-            <div class="stat-bar"><div class="stat-fill network" style="width:${p.network}%"></div></div>
-            <span class="stat-value">${p.network}</span>
-          </div>
-          <div class="stat-item" title="学识">
-            <span class="stat-icon">📖</span>
-            <div class="stat-bar"><div class="stat-fill knowledge" style="width:${p.knowledge}%"></div></div>
-            <span class="stat-value">${p.knowledge}</span>
+          <div class="stat-item-v2" title="学识">
+            <span>📖</span>
+            <div class="stat-bar-v2"><div class="stat-fill-v2 knowledge" style="width:${p.knowledge}%"></div></div>
+            <span class="stat-value-v2">${p.knowledge}</span>
           </div>
         </div>
-        <!-- 财务阶段 -->
-        <div class="financial-stage" style="background:${stage.color}20;border-color:${stage.color}">
-          <span style="color:${stage.color}">${stage.name}</span>
-          ${stage.progress !== undefined ? `<span class="stage-progress">应急金进度 ${stage.progress}%</span>` : ''}
-        </div>
-        <!-- 现金流面板 -->
-        <div class="cashflow-panel">
-          <h3>📊 本月现金流</h3>
-          <div class="cf-section">
-            <div class="cf-section-title">收入</div>
-            ${incomeBars}
-            <div class="cf-total income-total">
-              <span>总收入</span>
-              <span class="amount">+¥${this.formatNumber(income.total)}</span>
+
+        <!-- 资产负债简表（简化为3项） -->
+        <div class="assets-liabilities-v2">
+          <div class="al-item-v2">
+            <span class="al-icon">💵</span>
+            <div>
+              <div class="al-label-v2">存款</div>
+              <div class="al-value-v2">¥${this.formatNumber(p.savings)}</div>
             </div>
           </div>
-          <div class="cf-section">
-            <div class="cf-section-title">支出</div>
-            ${expenseBars}
-            <div class="cf-total expense-total">
-              <span>总支出</span>
-              <span class="amount">-¥${this.formatNumber(expense.total)}</span>
+          <div class="al-item-v2">
+            <span class="al-icon">📈</span>
+            <div>
+              <div class="al-label-v2">投资</div>
+              <div class="al-value-v2">¥${this.formatNumber(p.investments)}</div>
             </div>
           </div>
-          <div class="cf-balance ${balance >= 0 ? 'positive' : 'negative'}">
-            <span>本月结余</span>
-            <span class="amount">${balance >= 0 ? '+' : ''}¥${this.formatNumber(balance)}</span>
-          </div>
-          ${learningQueueHtml}
-        </div>
-        <!-- 资产负债简表 -->
-        <div class="assets-liabilities">
-          <div class="al-item assets">
-            <div class="al-label">资产</div>
-            <div class="al-value">¥${this.formatNumber(p.savings + p.investments + p.propertyValue)}</div>
-          </div>
-          <div class="al-item liabilities">
-            <div class="al-label">负债</div>
-            <div class="al-value">¥${this.formatNumber(p.debt)}</div>
-          </div>
-          <div class="al-item passive">
-            <div class="al-label">被动收入</div>
-            <div class="al-value">¥${this.formatNumber(passive)}/月</div>
+          <div class="al-item-v2">
+            <span class="al-icon">💳</span>
+            <div>
+              <div class="al-label-v2">负债</div>
+              <div class="al-value-v2 danger">¥${this.formatNumber(p.debt)}</div>
+            </div>
           </div>
         </div>
-        <!-- 功能按钮 -->
-        <div class="action-buttons">
-          <button class="action-btn skill-btn" onclick="game.showSkillTree()">
-            <span class="action-icon">🎯</span>
-            <span>技能树</span>
+
+        <!-- 简化功能按钮（4个：技能/投资/更多/下一月） -->
+        <div class="action-buttons-v2">
+          <button class="action-btn-v2 skill-btn-v2" onclick="game.showSkillTree()">
+            <span class="action-icon-v2">🎯</span>
+            <span>技能${learningBadge}</span>
           </button>
-          <button class="action-btn invest-btn" onclick="game.showInvest()">
-            <span class="action-icon">💹</span>
-            <span>投资/还债</span>
+          <button class="action-btn-v2 invest-btn-v2" onclick="game.showInvest()">
+            <span class="action-icon-v2">💹</span>
+            <span>投资</span>
           </button>
-          <button class="action-btn relationship-btn" onclick="game.showRelationships()">
-            <span class="action-icon">👥</span>
-            <span>人际关系</span>
+          <button class="action-btn-v2 more-btn-v2" onclick="game.showMoreMenu()">
+            <span class="action-icon-v2">⋯</span>
+            <span>更多</span>
           </button>
-          <button class="action-btn property-btn" onclick="game.showProperty()">
-            <span class="action-icon">🏠</span>
-            <span>房产</span>
-          </button>
-          <button class="action-btn next-btn" onclick="game.nextMonth()">
-            <span class="action-icon">⏭️</span>
+          <button class="action-btn-v2 next-btn-v2" onclick="game.nextMonth()">
+            <span class="action-icon-v2">⏭️</span>
             <span>下一月</span>
           </button>
         </div>
-        <!-- 事件日志 -->
-        <div class="event-log">
-          <div class="log-title">📝 人生日志</div>
-          <div class="log-content">
-            ${p.eventLog.slice(0, 8).map(log => `<div class="log-item">${log.text}</div>`).join('')}
+
+        <!-- 事件日志（简化为5条） -->
+        <div class="event-log-v2">
+          <div class="log-title-v2">📝 最近发生</div>
+          <div class="log-content-v2">
+            ${p.eventLog.slice(0, 5).map(log => `<div class="log-item-v2">${log.text}</div>`).join('')}
           </div>
         </div>
       </div>
     `;
   }
-  // 渲染收入条
+
+  // 【v0.9 核心】现金流可视化 - SVG资金流向图
+  renderCashFlowVisualization(income, expense, balance) {
+    const totalIncome = income.total;
+    const totalExpense = expense.total;
+    const maxValue = Math.max(totalIncome, totalExpense, 1);
+
+    // 收入项
+    const incomeItems = [
+      { name: '工资', value: income.salary, color: '#9BBBF4' },
+      { name: '副业', value: income.side, color: '#F4B393' },
+      { name: '被动', value: income.passive, color: '#A2DDAA' },
+      { name: '投资', value: income.investment, color: '#DEBEF8' }
+    ].filter(i => i.value > 0);
+
+    // 支出项
+    const expenseItems = [
+      { name: '生活', value: expense.base, color: '#8BC8EA' },
+      { name: '还债', value: expense.debtPayment, color: '#EA6668' }
+    ].filter(i => i.value > 0);
+
+    // SVG尺寸
+    const width = 340;
+    const height = 200;
+    const centerX = width / 2;
+
+    // 收入池位置
+    const incomeY = 50;
+    const incomeHeight = 50;
+    const incomeWidth = Math.max(60, (totalIncome / maxValue) * 120);
+
+    // 支出池位置
+    const expenseY = 130;
+    const expenseHeight = 40;
+    const expenseWidth = Math.max(60, (totalExpense / maxValue) * 120);
+
+    // 结余
+    const balanceColor = balance >= 0 ? '#00B894' : '#E17055';
+    const balanceText = balance >= 0 ? `+¥${this.formatNumber(balance)}` : `-¥${this.formatNumber(Math.abs(balance))}`;
+
+    // 收入明细标签
+    let incomeLabels = '';
+    let labelY = incomeY + incomeHeight + 16;
+    incomeItems.forEach((item, idx) => {
+      const x = 30 + idx * 75;
+      incomeLabels += `
+        <text x="${x}" y="${labelY}" font-size="10" fill="#6B7280" text-anchor="middle">${item.name}</text>
+        <text x="${x}" y="${labelY + 12}" font-size="10" fill="${item.color}" font-weight="600" text-anchor="middle">¥${this.formatNumber(item.value)}</text>
+      `;
+    });
+
+    // 支出明细标签
+    let expenseLabels = '';
+    let expLabelY = expenseY - 8;
+    expenseItems.forEach((item, idx) => {
+      const x = width - 60 - idx * 75;
+      expenseLabels += `
+        <text x="${x}" y="${expLabelY}" font-size="10" fill="#6B7280" text-anchor="middle">${item.name}</text>
+        <text x="${x}" y="${expLabelY - 12}" font-size="10" fill="${item.color}" font-weight="600" text-anchor="middle">¥${this.formatNumber(item.value)}</text>
+      `;
+    });
+
+    return `
+      <div class="cashflow-visual">
+        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="max-width:100%;height:auto;">
+          <!-- 标题 -->
+          <text x="${centerX}" y="20" font-size="13" font-weight="700" fill="#1A1B1C" text-anchor="middle">💰 资金流向</text>
+
+          <!-- 收入池 -->
+          <rect x="${centerX - incomeWidth/2}" y="${incomeY}" width="${incomeWidth}" height="${incomeHeight}" rx="8" fill="url(#incomeGrad)" />
+          <text x="${centerX}" y="${incomeY + 22}" font-size="11" fill="white" text-anchor="middle">总收入</text>
+          <text x="${centerX}" y="${incomeY + 38}" font-size="14" font-weight="700" fill="white" text-anchor="middle">¥${this.formatNumber(totalIncome)}</text>
+
+          <!-- 箭头：收入→支出 -->
+          <path d="M ${centerX} ${incomeY + incomeHeight} L ${centerX} ${expenseY - 5}" stroke="#E4E3DD" stroke-width="3" fill="none" marker-end="url(#arrowhead)" />
+
+          <!-- 支出池 -->
+          <rect x="${centerX - expenseWidth/2}" y="${expenseY}" width="${expenseWidth}" height="${expenseHeight}" rx="8" fill="url(#expenseGrad)" />
+          <text x="${centerX - expenseWidth/4}" y="${expenseY + 25}" font-size="11" fill="white" text-anchor="middle">支出</text>
+          <text x="${centerX - expenseWidth/4}" y="${expenseY + 40}" font-size="12" font-weight="700" fill="white" text-anchor="middle">¥${this.formatNumber(totalExpense)}</text>
+
+          <!-- 结余 -->
+          <circle cx="${centerX + expenseWidth/3}" cy="${expenseY + expenseHeight/2}" r="22" fill="${balanceColor}" />
+          <text x="${centerX + expenseWidth/3}" y="${expenseY + expenseHeight/2 - 2}" font-size="9" fill="white" text-anchor="middle">结余</text>
+          <text x="${centerX + expenseWidth/3}" y="${expenseY + expenseHeight/2 + 12}" font-size="10" font-weight="700" fill="white" text-anchor="middle">${balanceText}</text>
+
+          <!-- 收入明细 -->
+          ${incomeLabels}
+          <!-- 支出明细 -->
+          ${expenseLabels}
+
+          <!-- 渐变定义 -->
+          <defs>
+            <linearGradient id="incomeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#9BBBF4;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#A2DDAA;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="expenseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#8BC8EA;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#EA6668;stop-opacity:1" />
+            </linearGradient>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#E4E3DD" />
+            </marker>
+          </defs>
+        </svg>
+      </div>
+    `;
+  }
+
+  // 【v0.9】成长反馈区 - 展示本月进步
+  renderGrowthFeedback(player) {
+    const feedbacks = [];
+
+    // 收入增长
+    if (player.incomeHistory && player.incomeHistory.length >= 2) {
+      const lastIncome = player.incomeHistory[player.incomeHistory.length - 1];
+      const prevIncome = player.incomeHistory[player.incomeHistory.length - 2];
+      if (lastIncome > prevIncome) {
+        feedbacks.push({ icon: '📈', text: `月入上涨 ¥${this.formatNumber(lastIncome - prevIncome)}`, color: '#00B894' });
+      }
+    }
+
+    // 刚学会技能
+    if (player.recentlyLearnedSkill) {
+      feedbacks.push({ icon: '🎯', text: `学会了「${player.recentlyLearnedSkill}」`, color: '#7C3AED' });
+      player.recentlyLearnedSkill = null;
+    }
+
+    // 债务减少
+    if (player.debtHistory && player.debtHistory.length >= 2) {
+      const lastDebt = player.debtHistory[player.debtHistory.length - 1];
+      const prevDebt = player.debtHistory[player.debtHistory.length - 2];
+      if (lastDebt < prevDebt && lastDebt > 0) {
+        feedbacks.push({ icon: '💪', text: `还债 ¥${this.formatNumber(prevDebt - lastDebt)}`, color: '#F4B393' });
+      }
+    }
+
+    // 财务阶段提升
+    if (player.recentStageUp) {
+      feedbacks.push({ icon: '🏆', text: player.recentStageUp, color: '#FDCB6E' });
+      player.recentStageUp = null;
+    }
+
+    if (feedbacks.length === 0) return '';
+
+    return `
+      <div class="growth-feedback">
+        ${feedbacks.map(f => `
+          <div class="growth-item" style="border-left:3px solid ${f.color}">
+            <span class="growth-icon">${f.icon}</span>
+            <span class="growth-text">${f.text}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // 渲染收入条（保留兼容）
   renderIncomeBars(income) {
     const items = [
       { name: '工资', value: income.salary, color: '#9BBBF4' },
@@ -219,7 +359,8 @@ class UIManager {
       </div>
     `).join('');
   }
-  // 渲染支出条
+
+  // 渲染支出条（保留兼容）
   renderExpenseBars(expense) {
     const items = [
       { name: '生活', value: expense.base, color: '#8BC8EA' },
@@ -234,6 +375,7 @@ class UIManager {
       </div>
     `).join('');
   }
+
   // 渲染技能树
   renderSkillTree() {
     const p = this.game.player;
@@ -245,9 +387,11 @@ class UIManager {
         ${SKILL_CATEGORIES[cat].icon} ${SKILL_CATEGORIES[cat].name}
       </button>
     `).join('');
+
     const cat = SKILL_CATEGORIES[this.selectedCategory];
     const learnable = Object.values(LEARNABLE_SKILLS).filter(s => s.category === this.selectedCategory);
     const developable = Object.values(DEVELOPABLE_SKILLS).filter(s => s.category === this.selectedCategory);
+
     const learnableHtml = learnable.map(skill => {
       const learned = p.learnedSkills[skill.id];
       const learning = p.learningQueue.some(q => q.skillId === skill.id);
@@ -255,6 +399,7 @@ class UIManager {
       const condMet = p.checkPrerequisiteCondition(skill);
       const canAfford = p.savings >= skill.cost;
       const canLearn = !learned && !learning && prereqMet && condMet && canAfford;
+
       let statusText = '可学习';
       let btnClass = 'btn-learn';
       if (learned) { statusText = '已学会 ✓'; btnClass = 'btn-done'; }
@@ -262,6 +407,7 @@ class UIManager {
       else if (!prereqMet) { statusText = '需前置技能'; btnClass = 'btn-disabled'; }
       else if (!condMet) { statusText = '条件未满足'; btnClass = 'btn-disabled'; }
       else if (!canAfford) { statusText = '金钱不足'; btnClass = 'btn-disabled'; }
+
       return `
         <div class="skill-card ${learned ? 'learned' : ''}">
           <div class="skill-header">
@@ -285,20 +431,24 @@ class UIManager {
         </div>
       `;
     }).join('');
+
     const developableHtml = developable.map(skill => {
       const level = p.developedSkills[skill.id] || 0;
       const maxed = level >= skill.maxLevel;
       const developing = p.learningQueue.some(q => q.skillId === skill.id);
       const canAfford = p.savings >= skill.costPerLevel;
       const canDevelop = !maxed && !developing && canAfford;
+
       let statusText = '升级';
       let btnClass = 'btn-develop';
       if (maxed) { statusText = '已满级'; btnClass = 'btn-done'; }
       else if (developing) { statusText = '升级中...'; btnClass = 'btn-learning'; }
       else if (!canAfford) { statusText = '金钱不足'; btnClass = 'btn-disabled'; }
+
       const levelDots = Array(skill.maxLevel).fill(0).map((_, i) =>
         `<div class="level-dot ${i < level ? 'filled' : ''}" style="background:${i < level ? cat.color : '#ddd'}"></div>`
       ).join('');
+
       return `
         <div class="skill-card develop-card">
           <div class="skill-header">
@@ -323,6 +473,7 @@ class UIManager {
         </div>
       `;
     }).join('');
+
     return `
       <div class="screen skill-screen">
         <div class="screen-header">
@@ -353,6 +504,7 @@ class UIManager {
       </div>
     `;
   }
+
   // 渲染投资界面
   renderInvest() {
     const p = this.game.player;
@@ -443,6 +595,7 @@ class UIManager {
       </div>
     `;
   }
+
   // 渲染事件弹窗
   renderEvent(event) {
     const isLifeChoice = event.isLifeChoice === true;
@@ -459,6 +612,7 @@ class UIManager {
           reqText = `（需储蓄≥¥${this.formatNumber(choice.requirement.minSavings)}）`;
         }
       }
+
       // 人生岔路选项：显示图标、名称、描述
       if (isLifeChoice) {
         // 【P1记忆继承】检查玩家是否之前体验过这个选择
@@ -487,11 +641,13 @@ class UIManager {
         </button>
       `;
     }).join('');
+
     // 人生岔路特殊头部
     const headerHtml = isLifeChoice ? `
       <div class="life-choice-badge">🚦 人生岔路 · 不可逆选择</div>
       <div class="life-choice-warning">这个选择将改变你接下来的人生轨迹，无法反悔。</div>
     ` : '';
+
     return `
       <div class="event-modal-overlay">
         <div class="event-modal ${isLifeChoice ? 'life-choice-modal' : ''}">
@@ -506,6 +662,7 @@ class UIManager {
       </div>
     `;
   }
+
   // 渲染年度回顾
   renderYearReview() {
     const p = this.game.player;
@@ -513,6 +670,7 @@ class UIManager {
     const totalIncome = lastYear.reduce((sum, h) => sum + h.income, 0);
     const totalExpense = lastYear.reduce((sum, h) => sum + h.expense, 0);
     const totalSaved = lastYear.reduce((sum, h) => sum + h.balance, 0);
+
     return `
       <div class="event-modal-overlay">
         <div class="event-modal year-review">
@@ -542,12 +700,14 @@ class UIManager {
       </div>
     `;
   }
+
   // 渲染游戏结束
   renderGameOver(reason) {
     const p = this.game.player;
     const ending = this.game.calculateEnding();
     const totalMonths = this.game.totalMonthsPlayed;
     const yearsPlayed = Math.floor(totalMonths / 12);
+
     // 稀有度颜色和标签
     const rarityConfig = {
       legendary: { color: '#FFD700', label: '传奇', bg: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,165,0,0.3))' },
@@ -557,6 +717,7 @@ class UIManager {
     };
     const rarity = ending.rarity || 'common';
     const rc = rarityConfig[rarity] || rarityConfig.common;
+
     // 未体验结局提示（取前3个，激发探索欲）
     let lockedEndingsHtml = '';
     if (ending.lockedEndings && ending.lockedEndings.length > 0) {
@@ -578,6 +739,7 @@ class UIManager {
         </div>
       `;
     }
+
     return `
       <div class="screen gameover-screen">
         <div class="gameover-content">
@@ -629,6 +791,7 @@ class UIManager {
       </div>
     `;
   }
+
   // 工具方法
   formatNumber(num) {
     if (Math.abs(num) >= 10000) {
@@ -636,15 +799,18 @@ class UIManager {
     }
     return Math.round(num).toLocaleString();
   }
+
   getScenarioIcon(id) {
     const s = SCENARIOS.find(x => x.id === id);
     return s ? s.icon : '👤';
   }
+
   // 【P1记忆继承】渲染上一局回顾弹窗
   renderLastGameReview() {
     const summary = this.game.lastGameSummary;
     const memoryLevel = this.game.memoryLevel || 1;
     if (!summary) return '';
+
     const memoryLevelNames = ['', '似曾相识', '模糊预感', '清晰记忆'];
     const memoryLevelDesc = [
       '',
@@ -652,6 +818,7 @@ class UIManager {
       '你能模糊预感到接下来会发生什么...',
       '你清晰地记得上一段人生的每一个关键选择...'
     ];
+
     const choicesHtml = summary.lifeChoiceHistory && summary.lifeChoiceHistory.length > 0
       ? summary.lifeChoiceHistory.map(c => `
           <div class="review-choice">
@@ -660,6 +827,7 @@ class UIManager {
           </div>
         `).join('')
       : '<div class="review-empty">上一局没有做出关键人生选择</div>';
+
     let unexperiencedHint = '';
     if (typeof CollectionManager !== 'undefined') {
       const stats = CollectionManager.getUnexperiencedChoicesCount();
@@ -672,6 +840,7 @@ class UIManager {
         `;
       }
     }
+
     return `
       <div class="event-modal-overlay">
         <div class="event-modal memory-review-modal">
@@ -714,14 +883,17 @@ class UIManager {
       </div>
     `;
   }
+
   selectSkillCategory(cat) {
     this.selectedCategory = cat;
     this.game.render();
   }
+
   // 【P1】渲染人生图鉴界面
   renderCollection() {
     const collection = typeof CollectionManager !== 'undefined' ? CollectionManager.getCollection() : CollectionManager.getEmptyCollection();
-    const progress = typeof CollectionManager !== 'undefined' ? CollectionManager.getProgress() : { overall: 0, scenarios: {collected:0,total:6}, endings: {collected:0,total:15}, lifeChoices: {collected:0,total:15} };
+    const progress = typeof CollectionManager !== 'undefined' ? CollectionManager.getProgress() : { overall: 0, scenarios: {collected:0,total:6}, endings: {collected:0,total:5}, lifeChoices: {collected:0,total:15} };
+
     // 剧本收集
     const scenariosHtml = SCENARIOS.map(s => {
       const collected = collection.scenarios[s.id];
@@ -735,7 +907,8 @@ class UIManager {
         </div>
       `;
     }).join('');
-    // 结局收集（按稀有度分组显示15种结局）
+
+    // 结局收集（按稀有度分组）
     const rarityOrder = ['legendary', 'epic', 'rare', 'common'];
     const rarityLabels = { legendary: '👑 传奇结局', epic: '💎 史诗结局', rare: '⭐ 稀有结局', common: '📖 普通结局' };
     const rarityColors = { legendary: '#FFD700', epic: '#9B59B6', rare: '#3498DB', common: '#95A5A6' };
@@ -765,6 +938,7 @@ class UIManager {
         `;
       }
     }
+
     // 岔路收集
     const choicesHtml = Object.keys(LIFE_CHOICES).map(age => {
       const lc = LIFE_CHOICES[age];
@@ -784,7 +958,8 @@ class UIManager {
         </div>
       `;
     }).join('');
-    // 【P1成就系统】获取成就数据并按分类分组
+
+    // 成就系统
     const achievements = typeof CollectionManager !== 'undefined' && typeof ACHIEVEMENTS !== 'undefined'
       ? CollectionManager.getAchievements()
       : [];
@@ -811,6 +986,7 @@ class UIManager {
         </div>
       `;
     }).join('');
+
     return `
       <div class="screen collection-screen">
         <div class="collection-header">
@@ -863,11 +1039,13 @@ class UIManager {
       </div>
     `;
   }
+
   // 渲染人际关系界面
   renderRelationships() {
     const p = this.game.player;
     const rm = this.game.relationshipManager;
     const overview = rm.getRelationshipOverview();
+
     // 朋友列表
     const friendsHtml = rm.friends.length > 0
       ? rm.friends.map(f => `
@@ -886,6 +1064,7 @@ class UIManager {
         </div>
       `).join('')
       : '<div class="empty-state">还没有朋友，多参加社交活动吧</div>';
+
     // 伴侣状态
     let partnerHtml = '';
     if (rm.partner) {
@@ -917,6 +1096,7 @@ class UIManager {
     } else {
       partnerHtml = '<div class="empty-state">单身中，等待遇到对的人</div>';
     }
+
     // 子女列表
     const childrenHtml = rm.children.length > 0
       ? rm.children.map(c => `
@@ -942,6 +1122,7 @@ class UIManager {
         </div>
       `).join('')
       : '<div class="empty-state">还没有孩子</div>';
+
     return `
       <div class="relationships-screen">
         <div class="screen-header">
@@ -975,13 +1156,16 @@ class UIManager {
       </div>
     `;
   }
+
   // 渲染房产界面
   renderProperty() {
     const p = this.game.player;
     const pm = this.game.propertyManager;
     if (!p || !pm) return '<div class="property-screen"><p>加载中...</p></div>';
+
     const overview = pm.getPropertyOverview(p);
     const available = pm.getAvailableProperties(p);
+
     // 已持有房产HTML
     let ownedHtml = '';
     if (p.properties && p.properties.length > 0) {
@@ -1028,6 +1212,7 @@ class UIManager {
     } else {
       ownedHtml = '<div class="empty-state">🏠 还没有房产，考虑买一套吗？</div>';
     }
+
     // 可购买房产HTML
     const availableHtml = available.map(prop => {
       const disabled = !prop.canAfford ? 'disabled' : '';
@@ -1066,7 +1251,9 @@ class UIManager {
         </div>
       `;
     }).join('');
+
     const marketTrendText = overview.marketTrend > 0.2 ? '📈 上涨' : overview.marketTrend < -0.2 ? '📉 下跌' : '➡️ 平稳';
+
     return `
       <div class="property-screen">
         <div class="screen-header">
