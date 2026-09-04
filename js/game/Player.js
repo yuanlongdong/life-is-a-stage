@@ -8,12 +8,14 @@ class Player {
     this.scenarioName = scenario.name;
     this.age = scenario.age;
     this.city = scenario.city;
+
     // 四大属性
     this.health = scenario.initialStats.health;
     this.maxHealth = 100;
     this.happiness = scenario.initialStats.happiness;
     this.network = scenario.initialStats.network;
     this.knowledge = scenario.initialStats.knowledge;
+
     // 财务
     this.salary = scenario.initialFinance.salary;
     this.baseExpense = scenario.initialFinance.baseExpense;
@@ -21,38 +23,52 @@ class Player {
     this.investments = scenario.initialFinance.investments;
     this.debt = scenario.initialFinance.debt;
     this.propertyValue = scenario.initialFinance.propertyValue;
+
+    // 【v0.9】成长反馈追踪
+    this.incomeHistory = [];         // 收入历史，用于成长反馈
+    this.debtHistory = [];           // 债务历史，用于成长反馈
+    this.recentlyLearnedSkill = null; // 最近学会的技能名
+    this.recentStageUp = null;       // 最近的财务阶段提升提示
+
     // 房产系统
     this.properties = [];
     this.monthlyMortgage = 0;
     this.remainingMortgage = 0;
     this.rent = 1500;
     this.propertyAppreciationRate = 0.005;
+
     // 收入来源
     this.sideIncome = 0;
     this.passiveIncome = 0;
     this.pension = 0;
+
     // 技能
     this.skillLevels = { ...scenario.initialSkills };
     this.learnedSkills = {};
     this.developedSkills = {};
     this.learningQueue = [];
+
     // 人生状态
     this.isMarried = false;
     this.childrenCount = 0;
     this.hasHouse = false;
     this.isRetired = false;
     this.careerLevel = 1;
+
     // 延迟职业开始
     this.careerDelayMonths = 0;
     this.salaryStartMultiplier = 1.0;
     this.salaryCapMultiplier = 1.0;
     this.careerDelayApplied = false;
+
     // 成就和称号
     this.achievements = [];
     this.titles = [];
+
     // 人生岔路选择记录
     this.lifeChoices = {};
     this.lifeChoiceHistory = [];
+
     // 人生路线标记
     this.lifeRoutes = {
       standard_career: false,
@@ -64,9 +80,11 @@ class Player {
       aggressive_investor: false,
       health_first: false
     };
+
     // 历史记录
     this.monthlyHistory = [];
     this.eventLog = [];
+
     // 修饰器
     this.modifiers = {
       salaryMultiplier: 1.0,
@@ -78,6 +96,7 @@ class Player {
       learningSpeedMultiplier: 1.0,
       opportunityBonus: 0
     };
+
     // 解锁状态
     this.unlocks = {
       fund: false,
@@ -87,12 +106,15 @@ class Player {
       startup: false,
       riskTransfer: false
     };
+
     // 副业
     this.activeSideJobs = [];
   }
+
   getNetWorth() {
     return this.savings + this.investments + this.propertyValue - this.debt;
   }
+
   getMonthlyIncome() {
     let salaryIncome = 0;
     if (this.isRetired) {
@@ -113,6 +135,7 @@ class Player {
       total: salaryIncome + sideIncome + passiveIncome + investmentIncome
     };
   }
+
   getMonthlyExpense() {
     const baseExp = Math.round(this.baseExpense * this.modifiers.expenseMultiplier);
     const debtInterest = Math.round(this.debt * 0.012);
@@ -131,16 +154,20 @@ class Player {
       total: baseExp + debtPayment + housingExpense
     };
   }
+
   getMonthlyBalance() {
     return this.getMonthlyIncome().total - this.getMonthlyExpense().total;
   }
+
   getHealthCoefficient() {
     return 0.7 + (this.health / 100) * 0.3;
   }
+
   checkPrerequisite(skill) {
     if (!skill.prerequisite) return true;
     return !!this.learnedSkills[skill.prerequisite];
   }
+
   checkPrerequisiteCondition(skill) {
     if (!skill.prerequisiteCondition) return true;
     const cond = skill.prerequisiteCondition;
@@ -148,6 +175,7 @@ class Player {
     if (cond.minFans && (this.network * 10) < cond.minFans) return false;
     return true;
   }
+
   addAchievement(achievement) {
     if (!this.achievements.includes(achievement)) {
       this.achievements.push(achievement);
@@ -155,6 +183,7 @@ class Player {
     }
     return false;
   }
+
   addTitle(title) {
     if (!this.titles.includes(title)) {
       this.titles.push(title);
@@ -162,6 +191,7 @@ class Player {
     }
     return false;
   }
+
   recordMonthlyData(month, year) {
     const income = this.getMonthlyIncome();
     const expense = this.getMonthlyExpense();
@@ -175,12 +205,14 @@ class Player {
       debt: this.debt, health: this.health, happiness: this.happiness
     });
   }
+
   addEventLog(text) {
     this.eventLog.unshift({ month: this.age, text, timestamp: Date.now() });
     if (this.eventLog.length > 50) {
       this.eventLog = this.eventLog.slice(0, 50);
     }
   }
+
   applyEffects(effects) {
     const applied = [];
     if (effects.salaryMultiplier) {
@@ -256,9 +288,11 @@ class Player {
     }
     return applied;
   }
+
   serialize() {
     return JSON.stringify(this);
   }
+
   static deserialize(json) {
     const data = JSON.parse(json);
     const player = new Player({ id: data.scenarioId, name: data.scenarioName, age: data.age, initialStats: {}, initialFinance: {}, initialSkills: {} });
