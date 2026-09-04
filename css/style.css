@@ -1935,3 +1935,313 @@ html, body {
   0%, 100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4); }
   50% { box-shadow: 0 0 20px 5px rgba(102, 126, 234, 0.2); }
 }
+/* ===== v0.9 体验减法 - 新主界面样式 ===== */
+.game-screen.v2 {
+  padding-bottom: 20px;
+}
+/* 顶部状态栏（简化） */
+.top-bar-v2 {
+  background: linear-gradient(135deg, #6C5CE7, #A29BFE);
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+.player-info-v2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.player-avatar-v2 {
+  font-size: 28px;
+  background: rgba(255,255,255,0.2);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.player-name-v2 {
+  font-size: 14px;
+  font-weight: 700;
+}
+.player-time-v2 {
+  font-size: 11px;
+  opacity: 0.9;
+}
+.net-worth-v2 {
+  text-align: right;
+}
+.nw-label-v2 {
+  font-size: 10px;
+  opacity: 0.9;
+}
+.nw-value-v2 {
+  font-size: 18px;
+  font-weight: 800;
+}
+.nw-value-v2.positive { color: #7BED9F; }
+.nw-value-v2.negative { color: #FFB8B8; }
+/* 财务阶段（简化） */
+.financial-stage-v2 {
+  margin: 10px 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+.stage-progress-v2 {
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+/* 【核心】现金流可视化区域 */
+.cashflow-core {
+  margin: 0 12px 12px;
+  background: white;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.cashflow-visual {
+  width: 100%;
+  overflow: hidden;
+}
+/* 成长反馈区 */
+.growth-feedback {
+  margin: 0 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.growth-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1A1B1C;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  animation: growthSlideIn 0.3s ease;
+}
+@keyframes growthSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.growth-icon {
+  font-size: 16px;
+}
+.growth-text {
+  flex: 1;
+}
+/* 简化属性条 */
+.stats-bar-v2 {
+  margin: 0 16px 12px;
+  background: white;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  gap: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.stat-item-v2 {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+.stat-bar-v2 {
+  width: 100%;
+  height: 5px;
+  background: #E4E3DD;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.stat-fill-v2 {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.stat-fill-v2.health { background: #E17055; }
+.stat-fill-v2.happiness { background: #FDCB6E; }
+.stat-fill-v2.knowledge { background: #A29BFE; }
+.stat-value-v2 {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6B7280;
+}
+/* 资产负债简表（简化） */
+.assets-liabilities-v2 {
+  display: flex;
+  gap: 8px;
+  margin: 0 16px 12px;
+}
+.al-item-v2 {
+  flex: 1;
+  background: white;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.al-icon {
+  font-size: 20px;
+}
+.al-label-v2 {
+  font-size: 10px;
+  color: #6B7280;
+}
+.al-value-v2 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1A1B1C;
+}
+.al-value-v2.danger {
+  color: #E17055;
+}
+/* 简化功能按钮 */
+.action-buttons-v2 {
+  display: flex;
+  gap: 8px;
+  margin: 0 16px 12px;
+}
+.action-btn-v2 {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  border: none;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+.action-btn-v2:active {
+  transform: scale(0.95);
+}
+.action-icon-v2 {
+  font-size: 20px;
+}
+.skill-btn-v2 { background: rgba(162, 155, 254, 0.15); color: #6C5CE7; }
+.invest-btn-v2 { background: rgba(0, 184, 148, 0.15); color: #00B894; }
+.more-btn-v2 { background: rgba(108, 117, 125, 0.1); color: #6C757D; }
+.next-btn-v2 { background: rgba(253, 121, 168, 0.15); color: #FD79A8; }
+.learning-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #FD79A8;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+/* 事件日志（简化） */
+.event-log-v2 {
+  margin: 0 16px;
+  background: white;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.log-title-v2 {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1A1B1C;
+  margin-bottom: 8px;
+}
+.log-content-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.log-item-v2 {
+  font-size: 12px;
+  color: #6B7280;
+  line-height: 1.4;
+  padding-left: 8px;
+  border-left: 2px solid #E4E3DD;
+}
+/* 更多菜单弹窗 */
+.more-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+.more-menu-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  width: 100%;
+  max-width: 300px;
+  animation: slideUp 0.2s ease;
+}
+.more-menu-title {
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 16px;
+  color: #1A1B1C;
+}
+.more-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #E4E3DD;
+  background: white;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1A1B1C;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+.more-menu-item:active {
+  background: #F8F9FA;
+  transform: scale(0.98);
+}
+.more-menu-icon {
+  font-size: 20px;
+}
+.more-menu-close {
+  justify-content: center;
+  color: #6B7280;
+  border-color: transparent;
+  background: #F8F9FA;
+  margin-bottom: 0;
+}
