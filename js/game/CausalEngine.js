@@ -56,10 +56,12 @@ class CausalEngine {
       sourceDecisionId: consequence.sourceDecisionId || null,
       startAge: consequence.startAge ?? (this.player ? this.player.age : 0),
       durationMonths: consequence.durationMonths ?? null,
+      mode: consequence.mode || 'periodic',
       tags: Array.isArray(consequence.tags) ? [...consequence.tags] : [],
       condition: consequence.condition || null,
       effect: consequence.effect || null,
-      metadata: consequence.metadata || {}
+      metadata: consequence.metadata || {},
+      appliedCount: 0
     });
     return true;
   }
@@ -67,10 +69,11 @@ class CausalEngine {
   tick() {
     if (!this.player) return [];
     const applied = [];
+
     this.activeConsequences = this.activeConsequences.filter(consequence => {
-      if (consequence.durationMonths !== null) {
-        consequence.durationMonths -= 1;
-        if (consequence.durationMonths < 0) return false;
+      // durationMonths 表示剩余可生效月数；0 表示本月不再生效。
+      if (consequence.durationMonths !== null && consequence.durationMonths <= 0) {
+        return false;
       }
 
       if (typeof consequence.condition === 'function' && !consequence.condition(this.player)) {
@@ -79,15 +82,45 @@ class CausalEngine {
 
       if (typeof consequence.effect === 'function') {
         const result = consequence.effect(this.player, this);
-        if (result) applied.push({ id: consequence.id, result });
+        consequence.appliedCount += 1;
+        if (result) {
+          applied.push({ id: consequence.id, result, appliedCount: consequence.appliedCount });
+        }
       }
-      return true;
+
+      // once：满足条件并执行一次后立即移除。
+      if (consequence.mode === 'once') {
+        return false;
+      }
+
+      if (consequence.durationMonths !== null) {
+        consequence.durationMonths -= 1;
+      }
+
+      return consequence.durationMonths === null || consequence.durationMonths > 0;
     });
+
+    if (applied.length > 0) {
+      applied.forEach(item => {
+        this.causalLog.push({
+          id: `consequence_${++this.sequence}`,
+          type: 'consequence_applied',
+          consequenceId: item.id,
+          age: this.player ? this.player.age : null,
+          appliedCount: item.appliedCount,
+          timestamp: Date.now()
+        });
+      });
+    }
+
     return applied;
   }
 
   getActiveConsequences() {
-    return this.activeConsequences.map(item => ({ ...item, tags: [...item.tags] }));
+    return this.activeConsequences.map(item => ({
+      ...item,
+      tags: [...item.tags]
+    }));
   }
 
   getLog() {
