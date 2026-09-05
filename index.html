@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="《人生如戏》- 人生模拟 × 财商教育 × 卡牌决策游戏">
+  <meta name="description" content="《人生如戏》- 可以重新体验另一种人生的决策模拟器">
   <title>人生如戏 - Life is a Stage</title>
-  <link rel="stylesheet" href="css/style.css?v=0.9.0">
+  <link rel="stylesheet" href="css/style.css?v=1.0.0"></link>
 </head>
 <body>
   <div id="app">
@@ -15,18 +15,22 @@
     </div>
   </div>
   <!-- 数据配置 -->
-  <script src="js/data/skills.js?v=0.9.0"></script>
-  <script src="js/data/events.js?v=0.9.0"></script>
-  <script src="js/data/scenarios.js?v=0.9.0"></script>
-  <script src="js/data/endings.js?v=0.9.0"></script>
+  <script src="js/data/skills.js?v=1.0.0"></script>
+  <script src="js/data/events.js?v=1.0.0"></script>
+  <script src="js/data/scenarios.js?v=1.0.0"></script>
+  <script src="js/data/endings.js?v=1.0.0"></script>
   <!-- 游戏核心 -->
-  <script src="js/game/Player.js?v=0.9.0"></script>
-  <script src="js/game/Collection.js?v=0.9.0"></script>
-  <script src="js/game/RelationshipManager.js?v=0.9.0"></script>
-    <script src="js/game/PropertyManager.js?v=0.9.0"></script>
-  <script src="js/game/GameState.js?v=0.9.0"></script>
-  <script src="js/game/UIManager.js?v=0.9.0"></script>
+  <script src="js/game/Player.js?v=1.0.0"></script>
+  <script src="js/game/Collection.js?v=1.0.0"></script>
+  <script src="js/game/RelationshipManager.js?v=1.0.0"></script>
+  <script src="js/game/PropertyManager.js?v=1.0.0"></script>
+  <script src="js/game/GameState.js?v=1.0.0"></script>
+  <script src="js/game/UIManager.js?v=1.0.0"></script>
   <!-- 主入口 -->
-  <script src="js/main.js?v=0.9.0"></script>
+  <script src="js/main.js?v=1.0.0"></script>
+  <!-- v1.0 人生模拟层：在旧核心外接入因果记录与人生时间线 -->
+  <script src="js/game/CausalEngine.js?v=1.0.0"></script>
+  <script src="js/game/LifeTimeline.js?v=1.0.0"></script>
+  <script src="js/game/V1EvolutionAdapter.js?v=1.0.0"></script>
 </body>
 </html>
