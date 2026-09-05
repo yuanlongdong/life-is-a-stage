@@ -14,6 +14,7 @@
     if (!state || !state.player) return;
     state.causalEngine = new CausalEngine(state.player);
     state.lifeTimeline = new LifeTimeline(state.player);
+    state.player._v1CausalEngine = state.causalEngine;
     state.lifeTimeline.add({
       type: 'start',
       importance: 'critical',
@@ -34,11 +35,10 @@
     if (!this.player) return result;
 
     if (!this.causalEngine || !this.lifeTimeline) attachV1Systems(this);
+    this.player._v1CausalEngine = this.causalEngine;
 
-    // 每个月推进一次持续因果。
     if (this.causalEngine) this.causalEngine.tick();
 
-    // 只记录真正值得回看的节点，避免时间线变成流水账。
     if (result && result.event) {
       this.lifeTimeline.add({
         type: 'event',
@@ -83,13 +83,10 @@
     get() {
       if (!this.player) return null;
       if (!this.causalEngine || !this.lifeTimeline) attachV1Systems(this);
-      if (this.causalEngine) this.causalEngine.player = this.player;
-      if (this.lifeTimeline) this.lifeTimeline.player = this.player;
+      this.causalEngine.player = this.player;
+      this.lifeTimeline.player = this.player;
       this.player._v1CausalEngine = this.causalEngine;
-      return {
-        causalEngine: this.causalEngine,
-        lifeTimeline: this.lifeTimeline
-      };
+      return { causalEngine: this.causalEngine, lifeTimeline: this.lifeTimeline };
     }
   });
 
