@@ -132,14 +132,28 @@
   // 兼容旧存档格式；v1 数据只作为附加字段，不破坏旧系统。
   if (originalSerialize) {
     Player.prototype.serialize = function () {
-      const raw = originalSerialize.call(this);
+      // 临时移除循环引用属性，避免JSON.stringify失败
+      const v1Ref = this._v1CausalEngine;
+      const v1Prog = this._v1Progression;
+      delete this._v1CausalEngine;
+      delete this._v1Progression;
+
+      let raw;
+      try {
+        raw = originalSerialize.call(this);
+      } finally {
+        // 恢复引用
+        if (v1Ref) this._v1CausalEngine = v1Ref;
+        if (v1Prog) this._v1Progression = v1Prog;
+      }
+
       let data;
       if (typeof raw === 'string') {
         try { data = JSON.parse(raw); } catch (error) { return raw; }
       } else if (raw && typeof raw === 'object') {
         data = { ...raw };
       } else return raw;
-      if (this._v1CausalEngine) data.v1CausalSnapshot = this._v1CausalEngine.snapshot();
+      if (v1Ref) data.v1CausalSnapshot = v1Ref.snapshot();
       return typeof raw === 'string' ? JSON.stringify(data) : data;
     };
   }
