@@ -30,7 +30,7 @@ class Game {
     }
     if (this.state.phase === GamePhase.EVENT && this.state.pendingEvent) html += this.ui.renderEvent(this.state.pendingEvent);
     if (this.state.phase === GamePhase.YEAR_REVIEW) html += this.ui.renderYearReview();
-    // v1：把“我的这一生”作为独立入口叠加到游戏界面，不改动旧 UIManager。
+    // v1：把"我的这一生"作为独立入口叠加到游戏界面，不改动旧 UIManager。
     if (this.state.phase === GamePhase.PLAYING && typeof LifeTimelineUI !== 'undefined') {
       html += '<button class="timeline-launcher" onclick="game.showTimeline()">⌛ 我的这一生</button>';
     }
@@ -72,6 +72,90 @@ class Game {
     document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.render(this.state));
   }
   closeTimeline() { const overlay = document.querySelector('.timeline-overlay'); if (overlay) overlay.remove(); }
+
+  // ===== 平行人生 v1.1 =====
+  showParallelChoices(entryIndex) {
+    if (!this.state.lifeTimeline || typeof LifeTimelineUI === 'undefined') return;
+    const entries = this.state.lifeTimeline.getMajorMoments().slice().reverse();
+    const entry = entries[entryIndex];
+    if (!entry) return;
+    this._currentParallelEntry = entry;
+    this.closeTimeline();
+    document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.renderParallelChoices(this.state, entry));
+  }
+
+  closeParallelChoices() {
+    const overlay = document.querySelector('.parallel-modal')?.closest('.timeline-overlay');
+    if (overlay) overlay.remove();
+    // 重新打开时间线
+    if (this.state.player && typeof LifeTimelineUI !== 'undefined') {
+      document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.render(this.state));
+    }
+  }
+
+  startParallelLife(timelineId, choiceId) {
+    if (typeof ParallelLife === 'undefined' || !this._currentParallelEntry) {
+      alert('平行人生功能未加载');
+      return;
+    }
+    // 显示模拟中
+    this.closeParallelChoices();
+    document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.renderSimulating());
+
+    // 延迟执行，让UI先渲染
+    setTimeout(() => {
+      try {
+        const result = ParallelLife.simulate(this.state, this._currentParallelEntry, choiceId);
+        // 移除模拟中
+        const simOverlay = document.querySelector('.simulating-modal')?.closest('.timeline-overlay');
+        if (simOverlay) simOverlay.remove();
+
+        if (!result.success) {
+          alert(result.message || '平行人生模拟失败');
+          return;
+        }
+
+        this._lastParallelResult = result;
+        document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.renderComparison(result.comparison));
+      } catch (e) {
+        console.error('Parallel life simulation error:', e);
+        const simOverlay = document.querySelector('.simulating-modal')?.closest('.timeline-overlay');
+        if (simOverlay) simOverlay.remove();
+        alert('平行人生模拟出错：' + e.message);
+      }
+    }, 100);
+  }
+
+  closeComparison() {
+    const overlay = document.querySelector('.comparison-modal')?.closest('.timeline-overlay');
+    if (overlay) overlay.remove();
+    this._lastParallelResult = null;
+  }
+
+  continueFromParallel() {
+    if (!this._lastParallelResult || !this._lastParallelResult.parallelState) {
+      alert('没有可继续的平行人生');
+      return;
+    }
+    if (!confirm('确定要以B人生继续吗？当前A人生的进度将被替换。')) return;
+
+    const parallelState = this._lastParallelResult.parallelState;
+    // 替换当前游戏状态
+    this.state.player = parallelState.player;
+    this.state.causalEngine = parallelState.causalEngine;
+    this.state.lifeTimeline = parallelState.lifeTimeline;
+    this.state.phase = GamePhase.PLAYING;
+    this.state.currentMonth = parallelState.currentMonth;
+    this.state.currentYear = parallelState.currentYear;
+    this.state.totalMonthsPlayed = parallelState.totalMonthsPlayed;
+    this.state.relationshipManager = parallelState.relationshipManager;
+    this.state.propertyManager = parallelState.propertyManager;
+
+    this.closeComparison();
+    this.state.save();
+    this.render();
+    alert('🔀 你已进入平行人生！');
+  }
 
   showSkillTree() { this.state.phase = GamePhase.SKILL_TREE; this.render(); }
   showInvest() { this.state.phase = GamePhase.INVEST; this.render(); }

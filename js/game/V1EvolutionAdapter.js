@@ -144,6 +144,47 @@
     };
   }
 
+  // 给 UI / 事件系统一个稳定入口：以后所有真正改变人生路线的选择都应走这里。
+  // 同时保存玩家状态快照，用于平行人生回溯。
+  GameState.prototype.recordLifeDecision = function (decision) {
+    if (!this.player) return null;
+    if (!this.causalEngine || !this.lifeTimeline) attachV1Systems(this);
+    if (!this.causalEngine || !this.lifeTimeline) return null;
+
+    // 保存决策前的玩家状态快照（用于平行人生回溯）
+    // 注意：需要排除循环引用属性（_v1CausalEngine等）
+    let playerSnapshot = null;
+    try {
+      const v1Ref = this.player._v1CausalEngine;
+      const v1Prog = this.player._v1Progression;
+      delete this.player._v1CausalEngine;
+      delete this.player._v1Progression;
+      playerSnapshot = JSON.parse(JSON.stringify(this.player));
+      if (v1Ref) this.player._v1CausalEngine = v1Ref;
+      if (v1Prog) this.player._v1Progression = v1Prog;
+    } catch (e) {
+      console.warn('Failed to snapshot player for parallel life:', e);
+    }
+
+    const record = this.causalEngine.recordDecision(decision);
+    this.lifeTimeline.add({
+      type: 'decision',
+      importance: decision.importance || 'major',
+      title: decision.title || decision.name || '人生选择',
+      text: decision.text || '',
+      tags: ['decision', decision.category || 'life'],
+      metadata: {
+        decisionId: decision.id || null,
+        optionId: decision.optionId || null,
+        source: decision.source || 'game',
+        playerSnapshot: playerSnapshot,
+        age: this.player.age,
+        canParallel: decision.category === 'life_choice' || decision.isLifeChoice === true
+      }
+    });
+    return record;
+  };
+
   Object.defineProperty(GameState.prototype, 'v1Simulation', {
     configurable: true,
     get() {
