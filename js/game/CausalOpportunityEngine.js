@@ -31,7 +31,10 @@
       player._v1Opportunity = {
         weights: Object.assign({}, DEFAULTS),
         history: [],
-        months: 0
+        months: 0,
+        lastTickAge: null,
+        lastTickMonth: null,
+        lastTickYear: null
       };
     }
     return player._v1Opportunity;
@@ -67,8 +70,8 @@
 
     w.academic *= clamp(1 + skillScore * 0.015 + Math.max(0, knowledge - 50) * 0.003, 1, 1.6);
     w.career *= clamp(1 + skillScore * 0.01, 1, 1.5);
-    w.health *= clamp(1 + number(player.health) < 50 ? 0.15 : 0, 1, 1.15);
-    w.family *= clamp(1 + number(player.happiness) < 45 ? 0.1 : 0, 1, 1.1);
+    w.health *= clamp(number(player.health) < 50 ? 1.15 : 1, 1, 1.15);
+    w.family *= clamp(number(player.happiness) < 45 ? 1.10 : 1, 1, 1.10);
 
     Object.keys(w).forEach(key => {
       w[key] = Number(clamp(w[key], 0.1, 3).toFixed(3));
@@ -78,16 +81,32 @@
     return w;
   }
 
-  function tick(player) {
+  function tick(player, context) {
     if (!player) return null;
     const state = ensure(player);
+    const meta = context || {};
+    const age = number(meta.age, number(player.age));
+    const month = number(meta.month, 0);
+    const year = number(meta.year, 0);
+
+    // 同一个游戏月只记录一次，避免 checkForEvent / 其他入口重复写历史。
+    if (state.lastTickAge === age && state.lastTickMonth === month && state.lastTickYear === year) {
+      return state.weights;
+    }
+
     state.months = number(state.months) + 1;
     const weights = calculate(player);
     state.history.push({
       month: state.months,
+      age,
+      year,
+      calendarMonth: month,
       weights: Object.assign({}, weights)
     });
     if (state.history.length > 24) state.history.shift();
+    state.lastTickAge = age;
+    state.lastTickMonth = month;
+    state.lastTickYear = year;
     return weights;
   }
 
@@ -101,6 +120,6 @@
     calculate,
     tick,
     get,
-    version: '1.0.0'
+    version: '1.0.1'
   };
 })();
