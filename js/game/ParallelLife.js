@@ -1,6 +1,9 @@
 /**
- * 平行人生模拟器 v1.3
+ * 平行人生模拟器 v1.4
  * 关键决策前快照 → 换一个选择 → 从该节点继续真实月度模拟 → A/B 因果对比 → 保存为人生分支。
+ *
+ * v1.4：把原人生/平行人生的完整玩家快照交给 CausalDiffEngine，
+ * 让差异分析能够追踪月度状态与机会结构，而不是只比较终局数字。
  */
 (function () {
   if (typeof GameState === 'undefined' || typeof Player === 'undefined') return;
@@ -110,7 +113,6 @@
   }
 
   function buildSnapshot(branch, branchId, decisionAge, newChoice, gameOver, monthsSimulated) {
-    // 先写入分支节点，再快照，保证恢复这条人生时分支标记不会消失。
     if (branch.lifeTimeline) {
       branch.lifeTimeline.addBranch({
         id: branchId,
@@ -189,6 +191,11 @@
       newChoice: newChoice.shortName || newChoice.text,
       original,
       parallel: { ...parallel, ending, monthsSimulated, gameOver },
+      // 完整玩家快照：供 CausalDiffEngine v2 追踪月度状态和机会历史。
+      originalPlayer: clone(snapshot.player),
+      parallelPlayer: clone(branch.player),
+      originalCausal: clone(snapshot.causalSnapshot),
+      parallelCausal: branch.causalEngine ? clone(branch.causalEngine.snapshot()) : null,
       differences: {
         netWorth: parallel.netWorth - original.netWorth,
         monthlyIncome: parallel.monthlyIncome - original.monthlyIncome,
@@ -202,18 +209,17 @@
     };
 
     const causalDiff = typeof CausalDiffEngine !== 'undefined'
-      ? CausalDiffEngine.analyze(comparison, snapshot.timelineSnapshot, branch.lifeTimeline ? branch.lifeTimeline.snapshot() : null)
+      ? CausalDiffEngine.analyze(
+          comparison,
+          snapshot.timelineSnapshot,
+          branch.lifeTimeline ? branch.lifeTimeline.snapshot() : null,
+          comparison.originalCausal,
+          comparison.parallelCausal
+        )
       : null;
     comparison.causalDiff = causalDiff;
 
-    const branchSnapshot = buildSnapshot(
-      branch,
-      branchId,
-      decisionAge,
-      newChoice,
-      gameOver,
-      monthsSimulated
-    );
+    const branchSnapshot = buildSnapshot(branch, branchId, decisionAge, newChoice, gameOver, monthsSimulated);
     if (branchSnapshot.timelineSnapshot && branchSnapshot.timelineSnapshot.branches) {
       const marker = branchSnapshot.timelineSnapshot.branches.find(item => item.id === branchId);
       if (marker) marker.sourceDecisionId = timelineEntry.metadata && timelineEntry.metadata.decisionId || null;
@@ -251,5 +257,5 @@
     };
   }
 
-  window.ParallelLife = { simulate: simulateParallelLife, version: '1.3.0' };
+  window.ParallelLife = { simulate: simulateParallelLife, version: '1.4.0' };
 })();
