@@ -30,7 +30,6 @@ class Game {
     }
     if (this.state.phase === GamePhase.EVENT && this.state.pendingEvent) html += this.ui.renderEvent(this.state.pendingEvent);
     if (this.state.phase === GamePhase.YEAR_REVIEW) html += this.ui.renderYearReview();
-    // v1：把"我的这一生"作为独立入口叠加到游戏界面，不改动旧 UIManager。
     if (this.state.phase === GamePhase.PLAYING && typeof LifeTimelineUI !== 'undefined') {
       html += '<button class="timeline-launcher" onclick="game.showTimeline()">⌛ 我的这一生</button>';
     }
@@ -73,7 +72,6 @@ class Game {
   }
   closeTimeline() { const overlay = document.querySelector('.timeline-overlay'); if (overlay) overlay.remove(); }
 
-  // ===== 平行人生 v1.1 =====
   showParallelChoices(entryIndex) {
     if (!this.state.lifeTimeline || typeof LifeTimelineUI === 'undefined') return;
     const entries = this.state.lifeTimeline.getMajorMoments().slice().reverse();
@@ -87,7 +85,6 @@ class Game {
   closeParallelChoices() {
     const overlay = document.querySelector('.parallel-modal')?.closest('.timeline-overlay');
     if (overlay) overlay.remove();
-    // 重新打开时间线
     if (this.state.player && typeof LifeTimelineUI !== 'undefined') {
       document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.render(this.state));
     }
@@ -98,15 +95,12 @@ class Game {
       alert('平行人生功能未加载');
       return;
     }
-    // 显示模拟中
     this.closeParallelChoices();
     document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.renderSimulating());
 
-    // 延迟执行，让UI先渲染
     setTimeout(() => {
       try {
         const result = ParallelLife.simulate(this.state, this._currentParallelEntry, choiceId);
-        // 移除模拟中
         const simOverlay = document.querySelector('.simulating-modal')?.closest('.timeline-overlay');
         if (simOverlay) simOverlay.remove();
 
@@ -140,7 +134,6 @@ class Game {
     if (!confirm('确定要以B人生继续吗？当前A人生的进度将被替换。')) return;
 
     const parallelState = this._lastParallelResult.parallelState;
-    // 替换当前游戏状态
     this.state.player = parallelState.player;
     this.state.causalEngine = parallelState.causalEngine;
     this.state.lifeTimeline = parallelState.lifeTimeline;
@@ -150,6 +143,8 @@ class Game {
     this.state.totalMonthsPlayed = parallelState.totalMonthsPlayed;
     this.state.relationshipManager = parallelState.relationshipManager;
     this.state.propertyManager = parallelState.propertyManager;
+    // 确保后续所有 Player.applyEffects 都继续写入当前B人生的因果引擎。
+    if (this.state.player) this.state.player._v1CausalEngine = this.state.causalEngine || null;
 
     this.closeComparison();
     this.state.save();
