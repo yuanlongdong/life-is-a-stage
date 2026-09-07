@@ -1,5 +1,5 @@
 /**
- * 平行人生模拟器 v1.1
+ * 平行人生模拟器 v1.2
  * 关键决策前快照 → 换一个选择 → 从该节点继续真实月度模拟 → A/B 对比 → 保存为人生分支。
  */
 (function () {
@@ -80,6 +80,13 @@
     };
   }
 
+  function calculateEnding(state) {
+    try {
+      if (typeof state.calculateEnding === 'function') return clone(state.calculateEnding());
+    } catch (error) { console.warn('Parallel ending calculation failed:', error); }
+    return null;
+  }
+
   function getChoice(lifeChoice, choiceId) {
     if (!lifeChoice || !Array.isArray(lifeChoice.choices)) return null;
     return lifeChoice.choices.find(c => String(c.id) === String(choiceId)) || null;
@@ -97,6 +104,11 @@
     return result;
   }
 
+  function makeBranchId(parentId, decisionAge, choiceId) {
+    const safe = String(choiceId).replace(/[^a-zA-Z0-9_-]/g, '_');
+    return `branch_${parentId || 'root'}_${decisionAge}_${safe}_${Date.now()}`;
+  }
+
   function simulateParallelLife(originalState, timelineEntry, newChoiceId) {
     if (!originalState || !originalState.player || !timelineEntry) return { success: false, message: '缺少必要的人生数据。' };
     const snapshot = timelineEntry.metadata && timelineEntry.metadata.stateSnapshot;
@@ -110,7 +122,10 @@
     const originalChoiceId = snapshot.player.lifeChoices && snapshot.player.lifeChoices[decisionAge];
     if (String(originalChoiceId) === String(newChoiceId)) return { success: false, message: '这是原来的选择，请选择另一条路。' };
 
+    const parentId = originalState.activeParallelBranchId || null;
+    const branchId = makeBranchId(parentId, decisionAge, newChoiceId);
     const branch = restoreState(originalState, snapshot);
+    branch.activeParallelBranchId = branchId;
     const choiceResult = applyAlternativeChoice(branch, lifeChoice, newChoiceId);
     if (!choiceResult.success) return choiceResult;
 
@@ -140,12 +155,15 @@
 
     const original = getMetrics(originalState);
     const parallel = getMetrics(branch);
+    const ending = calculateEnding(branch);
     const comparison = {
+      branchId,
+      parentBranchId: parentId,
       decisionAge,
       originalChoice: timelineEntry.title,
       newChoice: newChoice.shortName || newChoice.text,
       original,
-      parallel: { ...parallel, ending: null, monthsSimulated, gameOver },
+      parallel: { ...parallel, ending, monthsSimulated, gameOver },
       differences: {
         netWorth: parallel.netWorth - original.netWorth,
         monthlyIncome: parallel.monthlyIncome - original.monthlyIncome,
@@ -158,17 +176,16 @@
       }
     };
 
-    let branchId = null;
     if (typeof ParallelLifeRegistry !== 'undefined') {
-      const parentId = originalState.activeParallelBranchId || null;
-      const record = ParallelLifeRegistry.add(originalState, {
+      ParallelLifeRegistry.add(originalState, {
+        id: branchId,
         parentId,
         sourceTimelineId: timelineEntry.id,
         decisionAge,
         originalChoice: timelineEntry.title,
         alternativeChoice: newChoice.shortName || newChoice.text,
         comparison,
-        status: 'simulated',
+        status: gameOver ? 'ended' : 'simulated',
         stateSnapshot: {
           player: clone(branch.player),
           currentMonth: branch.currentMonth,
@@ -181,18 +198,15 @@
           timelineSnapshot: branch.lifeTimeline ? branch.lifeTimeline.snapshot() : null
         }
       });
-      branchId = record.id;
-      comparison.branchId = branchId;
-      comparison.parentBranchId = parentId;
     }
 
     if (branch.lifeTimeline) {
       branch.lifeTimeline.addBranch({
-        id: branchId || undefined,
+        id: branchId,
         fromAge: decisionAge,
         label: `如果选择「${newChoice.shortName || newChoice.text}」`,
         sourceDecisionId: timelineEntry.metadata && timelineEntry.metadata.decisionId,
-        status: 'simulated',
+        status: gameOver ? 'ended' : 'simulated',
         description: `从${decisionAge}岁决策前状态分叉，真实模拟${monthsSimulated}个月。`
       });
     }
@@ -209,10 +223,11 @@
         currentYear: branch.currentYear,
         totalMonthsPlayed: branch.totalMonthsPlayed,
         relationshipManager: branch.relationshipManager,
-        propertyManager: branch.propertyManager
+        propertyManager: branch.propertyManager,
+        activeParallelBranchId: branchId
       }
     };
   }
 
-  window.ParallelLife = { simulate: simulateParallelLife, version: '1.1.0' };
+  window.ParallelLife = { simulate: simulateParallelLife, version: '1.2.0' };
 })();
