@@ -164,16 +164,17 @@
     if (!this.causalEngine || !this.lifeTimeline) return null;
 
     let playerSnapshot = null;
+    const v1Ref = this.player._v1CausalEngine;
+    const v1Prog = this.player._v1Progression;
     try {
-      const v1Ref = this.player._v1CausalEngine;
-      const v1Prog = this.player._v1Progression;
       delete this.player._v1CausalEngine;
       delete this.player._v1Progression;
       playerSnapshot = safeClone(this.player);
-      if (v1Ref) this.player._v1CausalEngine = v1Ref;
-      if (v1Prog) this.player._v1Progression = v1Prog;
     } catch (e) {
       console.warn('Failed to snapshot player for parallel life:', e);
+    } finally {
+      if (v1Ref) this.player._v1CausalEngine = v1Ref;
+      if (v1Prog) this.player._v1Progression = v1Prog;
     }
 
     const record = this.causalEngine.recordDecision(decision);
