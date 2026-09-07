@@ -13,6 +13,14 @@
   const originalSellProperty = GameState.prototype.sellProperty;
   const originalSerialize = typeof Player.prototype.serialize === 'function' ? Player.prototype.serialize : null;
 
+  function safeClone(value) {
+    if (value === undefined || value === null) return value;
+    if (typeof structuredClone === 'function') {
+      try { return structuredClone(value); } catch (_) {}
+    }
+    return JSON.parse(JSON.stringify(value));
+  }
+
   function attachV1Systems(state) {
     if (!state || !state.player || typeof CausalEngine === 'undefined' || typeof LifeTimeline === 'undefined') return;
     state.causalEngine = new CausalEngine(state.player);
@@ -70,7 +78,6 @@
     return applied;
   };
 
-  // 真正的人生岔路：选择、结果、长期影响进入同一条可追溯因果链。
   GameState.prototype.resolveEventChoice = function (choiceIndex) {
     const event = this.pendingEvent;
     const choice = event && event.choices ? event.choices[choiceIndex] : null;
@@ -99,7 +106,6 @@
     return originalResolveEventChoice.call(this, choiceIndex);
   };
 
-  // 房产决策单独进入时间线，形成“资产负债表 -> 人生路径”的第一条真实链路。
   GameState.prototype.buyProperty = function (propertyTypeId) {
     const result = originalBuyProperty.call(this, propertyTypeId);
     if (result && result.success && this.causalEngine) {
@@ -129,51 +135,41 @@
     return result;
   };
 
-  // 兼容旧存档格式；v1 数据只作为附加字段，不破坏旧系统。
   if (originalSerialize) {
     Player.prototype.serialize = function () {
-      // 临时移除循环引用属性，避免JSON.stringify失败
       const v1Ref = this._v1CausalEngine;
       const v1Prog = this._v1Progression;
       delete this._v1CausalEngine;
       delete this._v1Progression;
-
       let raw;
-      try {
-        raw = originalSerialize.call(this);
-      } finally {
-        // 恢复引用
+      try { raw = originalSerialize.call(this); }
+      finally {
         if (v1Ref) this._v1CausalEngine = v1Ref;
         if (v1Prog) this._v1Progression = v1Prog;
       }
-
       let data;
       if (typeof raw === 'string') {
         try { data = JSON.parse(raw); } catch (error) { return raw; }
-      } else if (raw && typeof raw === 'object') {
-        data = { ...raw };
-      } else return raw;
+      } else if (raw && typeof raw === 'object') data = { ...raw };
+      else return raw;
       if (v1Ref) data.v1CausalSnapshot = v1Ref.snapshot();
       return typeof raw === 'string' ? JSON.stringify(data) : data;
     };
   }
 
-  // 给 UI / 事件系统一个稳定入口：以后所有真正改变人生路线的选择都应走这里。
-  // 同时保存玩家状态快照，用于平行人生回溯。
+  // 所有真正改变人生路线的选择都走这里，并保存“选择前”的完整可回溯快照。
   GameState.prototype.recordLifeDecision = function (decision) {
     if (!this.player) return null;
     if (!this.causalEngine || !this.lifeTimeline) attachV1Systems(this);
     if (!this.causalEngine || !this.lifeTimeline) return null;
 
-    // 保存决策前的玩家状态快照（用于平行人生回溯）
-    // 注意：需要排除循环引用属性（_v1CausalEngine等）
     let playerSnapshot = null;
     try {
       const v1Ref = this.player._v1CausalEngine;
       const v1Prog = this.player._v1Progression;
       delete this.player._v1CausalEngine;
       delete this.player._v1Progression;
-      playerSnapshot = JSON.parse(JSON.stringify(this.player));
+      playerSnapshot = safeClone(this.player);
       if (v1Ref) this.player._v1CausalEngine = v1Ref;
       if (v1Prog) this.player._v1Progression = v1Prog;
     } catch (e) {
@@ -181,6 +177,18 @@
     }
 
     const record = this.causalEngine.recordDecision(decision);
+    const stateSnapshot = {
+      player: playerSnapshot,
+      currentMonth: this.currentMonth,
+      currentYear: this.currentYear,
+      totalMonthsPlayed: this.totalMonthsPlayed,
+      scenarioStartAge: this.scenarioStartAge,
+      relationshipManager: safeClone(this.relationshipManager),
+      propertyManager: safeClone(this.propertyManager),
+      causalSnapshot: this.causalEngine.snapshot(),
+      timelineSnapshot: this.lifeTimeline.snapshot()
+    };
+
     this.lifeTimeline.add({
       type: 'decision',
       importance: decision.importance || 'major',
@@ -192,6 +200,7 @@
         optionId: decision.optionId || null,
         source: decision.source || 'game',
         playerSnapshot: playerSnapshot,
+        stateSnapshot,
         age: this.player.age,
         canParallel: decision.category === 'life_choice' || decision.isLifeChoice === true
       }
@@ -212,7 +221,7 @@
   });
 
   window.LifeSimulation = {
-    version: '1.0.0-alpha.3',
+    version: '1.0.0-alpha.4',
     get(state) { return state ? state.v1Simulation : null; }
   };
 })();
