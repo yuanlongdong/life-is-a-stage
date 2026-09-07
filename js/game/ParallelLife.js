@@ -1,24 +1,16 @@
 /**
- * 平行人生模拟器 v1.0
- *
- * 关键决策前快照 → 换一个选择 → 从该节点继续真实月度模拟 → A/B 对比。
- * A 人生不会被修改，只有用户明确选择“以B人生继续”才替换当前状态。
+ * 平行人生模拟器 v1.1
+ * 关键决策前快照 → 换一个选择 → 从该节点继续真实月度模拟 → A/B 对比 → 保存为人生分支。
  */
 (function () {
   if (typeof GameState === 'undefined' || typeof Player === 'undefined') return;
 
   function clone(value) {
     if (value === undefined || value === null) return value;
-    try {
-      return JSON.parse(JSON.stringify(value));
-    } catch (_) {
-      return value;
-    }
+    try { return JSON.parse(JSON.stringify(value)); } catch (_) { return null; }
   }
 
-  function restorePlayer(snapshot) {
-    return Player.deserialize(JSON.stringify(snapshot));
-  }
+  function restorePlayer(snapshot) { return Player.deserialize(JSON.stringify(snapshot)); }
 
   function restoreManagers(state, snapshot) {
     state.relationshipManager = new RelationshipManager();
@@ -31,19 +23,13 @@
     if (typeof CausalEngine === 'undefined') return;
     state.causalEngine = new CausalEngine(state.player);
     const source = snapshot.causalSnapshot;
-    if (!source) {
-      state.player._v1CausalEngine = state.causalEngine;
-      return;
+    if (source) {
+      state.causalEngine.causalLog = clone(source.causalLog || []);
+      state.causalEngine.activeConsequences = (source.activeConsequences || []).map(item => ({
+        ...clone(item), effect: null, condition: null, tags: Array.isArray(item.tags) ? [...item.tags] : []
+      }));
+      state.causalEngine.sequence = state.causalEngine.causalLog.length;
     }
-    state.causalEngine.causalLog = clone(source.causalLog || []);
-    state.causalEngine.activeConsequences = (source.activeConsequences || []).map(item => ({
-      ...clone(item),
-      // 当前因果快照中的长期影响主要用于追踪；函数无法跨 JSON 存档持久化。
-      effect: null,
-      condition: null,
-      tags: Array.isArray(item.tags) ? [...item.tags] : []
-    }));
-    state.causalEngine.sequence = state.causalEngine.causalLog.length;
     state.player._v1CausalEngine = state.causalEngine;
   }
 
@@ -112,37 +98,25 @@
   }
 
   function simulateParallelLife(originalState, timelineEntry, newChoiceId) {
-    if (!originalState || !originalState.player || !timelineEntry) {
-      return { success: false, message: '缺少必要的人生数据。' };
-    }
-
+    if (!originalState || !originalState.player || !timelineEntry) return { success: false, message: '缺少必要的人生数据。' };
     const snapshot = timelineEntry.metadata && timelineEntry.metadata.stateSnapshot;
-    if (!snapshot || !snapshot.player) {
-      return { success: false, message: '该节点没有完整快照。只有新产生的关键选择才能进行平行人生推演。' };
-    }
+    if (!snapshot || !snapshot.player) return { success: false, message: '该节点没有完整快照。只有新产生的关键选择才能进行平行人生推演。' };
 
     const decisionAge = timelineEntry.age;
     const lifeChoice = typeof LIFE_CHOICES !== 'undefined' ? LIFE_CHOICES[decisionAge] : null;
     if (!lifeChoice) return { success: false, message: `找不到${decisionAge}岁的原始人生岔路。` };
-
     const newChoice = getChoice(lifeChoice, newChoiceId);
     if (!newChoice) return { success: false, message: '找不到替代方案。' };
     const originalChoiceId = snapshot.player.lifeChoices && snapshot.player.lifeChoices[decisionAge];
-    if (String(originalChoiceId) === String(newChoiceId)) {
-      return { success: false, message: '这是原来的选择，请选择另一条路。' };
-    }
+    if (String(originalChoiceId) === String(newChoiceId)) return { success: false, message: '这是原来的选择，请选择另一条路。' };
 
-    // 1. 恢复“选择发生前”的完整状态。
     const branch = restoreState(originalState, snapshot);
     const choiceResult = applyAlternativeChoice(branch, lifeChoice, newChoiceId);
     if (!choiceResult.success) return choiceResult;
 
-    // 2. 从分叉点开始，复用真实 GameState.advanceMonth()，而不是另写一套模拟规则。
-    //    仅关闭随机事件，避免随机事件把“选择差异”淹没；年度结算、收入、债务、投资、技能、关系、房产、因果推进全部保留。
     const targetAge = originalState.player.age;
     const oldCheckForEvent = branch.checkForEvent;
     if (typeof oldCheckForEvent === 'function') branch.checkForEvent = () => null;
-
     let monthsSimulated = 0;
     let gameOver = null;
     const maxMonths = Math.max(12, (Math.max(0, targetAge - decisionAge) + 2) * 12);
@@ -152,33 +126,17 @@
         branch.phase = GamePhase.PLAYING;
         const result = branch.advanceMonth();
         monthsSimulated++;
-
-        if (result && result.gameOver) {
-          gameOver = result.gameOver;
-          break;
-        }
-
-        // 年度复盘是 UI 阶段，不应阻断后台推演。
+        if (result && result.gameOver) { gameOver = result.gameOver; break; }
         if (branch.phase === GamePhase.YEAR_REVIEW) branch.phase = GamePhase.PLAYING;
-        // 未来的人生岔路自动走第一选项，保证模拟可以持续推进。
         if (branch.phase === GamePhase.EVENT) {
           const event = branch.pendingEvent;
           if (event && event.isLifeChoice && event.choices && event.choices.length) {
-            const autoIndex = 0;
-            const autoResult = branch.resolveEventChoice(autoIndex);
-            if (!autoResult || !autoResult.success) {
-              branch.pendingEvent = null;
-              branch.phase = GamePhase.PLAYING;
-            }
-          } else {
-            branch.pendingEvent = null;
-            branch.phase = GamePhase.PLAYING;
-          }
+            const autoResult = branch.resolveEventChoice(0);
+            if (!autoResult || !autoResult.success) { branch.pendingEvent = null; branch.phase = GamePhase.PLAYING; }
+          } else { branch.pendingEvent = null; branch.phase = GamePhase.PLAYING; }
         }
       }
-    } finally {
-      branch.checkForEvent = oldCheckForEvent;
-    }
+    } finally { branch.checkForEvent = oldCheckForEvent; }
 
     const original = getMetrics(originalState);
     const parallel = getMetrics(branch);
@@ -187,12 +145,7 @@
       originalChoice: timelineEntry.title,
       newChoice: newChoice.shortName || newChoice.text,
       original,
-      parallel: {
-        ...parallel,
-        ending: null,
-        monthsSimulated,
-        gameOver
-      },
+      parallel: { ...parallel, ending: null, monthsSimulated, gameOver },
       differences: {
         netWorth: parallel.netWorth - original.netWorth,
         monthlyIncome: parallel.monthlyIncome - original.monthlyIncome,
@@ -205,8 +158,37 @@
       }
     };
 
+    let branchId = null;
+    if (typeof ParallelLifeRegistry !== 'undefined') {
+      const parentId = originalState.activeParallelBranchId || null;
+      const record = ParallelLifeRegistry.add(originalState, {
+        parentId,
+        sourceTimelineId: timelineEntry.id,
+        decisionAge,
+        originalChoice: timelineEntry.title,
+        alternativeChoice: newChoice.shortName || newChoice.text,
+        comparison,
+        status: 'simulated',
+        stateSnapshot: {
+          player: clone(branch.player),
+          currentMonth: branch.currentMonth,
+          currentYear: branch.currentYear,
+          totalMonthsPlayed: branch.totalMonthsPlayed,
+          scenarioStartAge: branch.scenarioStartAge,
+          relationshipManager: clone(branch.relationshipManager),
+          propertyManager: clone(branch.propertyManager),
+          causalSnapshot: branch.causalEngine ? branch.causalEngine.snapshot() : null,
+          timelineSnapshot: branch.lifeTimeline ? branch.lifeTimeline.snapshot() : null
+        }
+      });
+      branchId = record.id;
+      comparison.branchId = branchId;
+      comparison.parentBranchId = parentId;
+    }
+
     if (branch.lifeTimeline) {
       branch.lifeTimeline.addBranch({
+        id: branchId || undefined,
         fromAge: decisionAge,
         label: `如果选择「${newChoice.shortName || newChoice.text}」`,
         sourceDecisionId: timelineEntry.metadata && timelineEntry.metadata.decisionId,
@@ -218,6 +200,7 @@
     return {
       success: true,
       comparison,
+      branchId,
       parallelState: {
         player: branch.player,
         causalEngine: branch.causalEngine,
@@ -231,8 +214,5 @@
     };
   }
 
-  window.ParallelLife = {
-    simulate: simulateParallelLife,
-    version: '1.0.0'
-  };
+  window.ParallelLife = { simulate: simulateParallelLife, version: '1.1.0' };
 })();
