@@ -11,29 +11,65 @@ class Game {
     this.container = document.getElementById('app');
   }
 
-  init() { this.render(); }
+  // 初始化
+  init() {
+    this.render();
+  }
 
+  // 渲染当前界面
   render() {
     let html = '';
-    switch (this.state.phase) {
-      case GamePhase.MENU: html = this.ui.renderMenu(); break;
-      case GamePhase.SCENARIO_SELECT: html = this.ui.renderScenarioSelect(); break;
-      case GamePhase.PLAYING: html = this.ui.renderGame(); break;
-      case GamePhase.SKILL_TREE: html = this.ui.renderSkillTree(); break;
-      case GamePhase.INVEST: html = this.ui.renderInvest(); break;
-      case GamePhase.RELATIONSHIPS: html = this.ui.renderRelationships(); break;
-      case GamePhase.PROPERTY: html = this.ui.renderProperty(); break;
-      case GamePhase.GAME_OVER: html = this.ui.renderGameOver(this.state.gameOverReason || { message: '游戏结束' }); break;
-      case GamePhase.COLLECTION: html = this.ui.renderCollection(); break;
-      case GamePhase.LAST_GAME_REVIEW: html = this.ui.renderGame() + this.ui.renderLastGameReview(); break;
-      default: html = this.ui.renderMenu();
+    try {
+      switch (this.state.phase) {
+        case GamePhase.MENU:
+          html = this.ui.renderMenu();
+          break;
+        case GamePhase.SCENARIO_SELECT:
+          html = this.ui.renderScenarioSelect();
+          break;
+        case GamePhase.PLAYING:
+        case GamePhase.EVENT:
+        case GamePhase.YEAR_REVIEW:
+          html = this.ui.renderGame();
+          break;
+        case GamePhase.SKILL_TREE:
+          html = this.ui.renderSkillTree();
+          break;
+        case GamePhase.INVEST:
+          html = this.ui.renderInvest();
+          break;
+        case GamePhase.GAME_OVER:
+          html = this.ui.renderGameOver(this.state.gameOverReason || { message: '游戏结束' });
+          break;
+        default:
+          html = this.ui.renderMenu();
+      }
+
+      // 事件弹窗（叠加层）- 容错：渲染失败不影响基础界面
+      if (this.state.phase === GamePhase.EVENT && this.state.pendingEvent) {
+        try { html += this.ui.renderEvent(this.state.pendingEvent); }
+        catch (e) { console.error('renderEvent failed:', e); }
+      }
+
+      // 年度回顾（叠加层）
+      if (this.state.phase === GamePhase.YEAR_REVIEW) {
+        try { html += this.ui.renderYearReview(); }
+        catch (e) { console.error('renderYearReview failed:', e); }
+      }
+
+      // 时间线入口按钮
+      if (this.state.phase === GamePhase.PLAYING && typeof LifeTimelineUI !== 'undefined') {
+        html += '<button class="timeline-launcher" onclick="game.showTimeline()">⌛ 我的这一生</button>';
+      }
+    } catch (e) {
+      console.error('render failed:', e);
+      html = '<div style="padding:40px;text-align:center;"><h2>渲染出错</h2><p style="color:#666;">' + e.message + '</p><button onclick="game.restart()" style="padding:10px 20px;margin-top:16px;">重新开始</button></div>';
     }
-    if (this.state.phase === GamePhase.EVENT && this.state.pendingEvent) html += this.ui.renderEvent(this.state.pendingEvent);
-    if (this.state.phase === GamePhase.YEAR_REVIEW) html += this.ui.renderYearReview();
-    if (this.state.phase === GamePhase.PLAYING && typeof LifeTimelineUI !== 'undefined') html += '<button class="timeline-launcher" onclick="game.showTimeline()">⌛ 我的这一生</button>';
+
     this.container.innerHTML = html;
   }
 
+  // === 菜单操作 ===
   startScenarioSelect() { this.state.phase = GamePhase.SCENARIO_SELECT; this.render(); }
   backToMenu() { this.state.phase = GamePhase.MENU; this.render(); }
   selectScenario(scenarioId) { const scenario = SCENARIOS.find(s => s.id === scenarioId); if (scenario) { this.state.startNewGame(scenario); this.render(); } }
@@ -43,75 +79,22 @@ class Game {
 
   nextMonth() {
     if (this.state.phase !== GamePhase.PLAYING) return;
-    const prevStage = this.state.getFinancialStage();
-    const prevStageName = prevStage ? prevStage.name : '';
-    const result = this.state.advanceMonth();
-    const p = this.state.player;
-    const monthlyIncome = p.getMonthlyIncome().total;
-    p.incomeHistory.push(monthlyIncome);
-    if (p.incomeHistory.length > 12) p.incomeHistory.shift();
-    p.debtHistory.push(p.debt);
-    if (p.debtHistory.length > 12) p.debtHistory.shift();
-    const newStage = this.state.getFinancialStage();
-    if (newStage && newStage.name !== prevStageName) p.recentStageUp = `财务阶段提升：${prevStageName} → ${newStage.name}`;
-    if (result && result.gameOver) { this.state.gameOverReason = result.gameOver; this.state.phase = GamePhase.GAME_OVER; }
-    this.state.save();
-    this.render();
-  }
-
-  showTimeline() { if (!this.state.player || typeof LifeTimelineUI === 'undefined') return; if (document.querySelector('.timeline-overlay')) return; document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.render(this.state)); }
-  closeTimeline() { document.querySelector('.timeline-overlay')?.remove(); }
-
-  showParallelChoices(entryIndex) {
-    if (!this.state.lifeTimeline || typeof LifeTimelineUI === 'undefined') return;
-    const entries = this.state.lifeTimeline.getMajorMoments().slice().reverse();
-    const entry = entries[entryIndex]; if (!entry) return;
-    this._currentParallelEntry = entry; this.closeTimeline();
-    document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.renderParallelChoices(this.state, entry));
-  }
-
-  closeParallelChoices() {
-    document.querySelector('.parallel-modal')?.closest('.timeline-overlay')?.remove();
-    if (this.state.player && typeof LifeTimelineUI !== 'undefined') document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.render(this.state));
-  }
-
-  startParallelLife(timelineId, choiceId) {
-    if (typeof ParallelLife === 'undefined' || !this._currentParallelEntry) { alert('平行人生功能未加载'); return; }
-    this.closeParallelChoices(); document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.renderSimulating());
-    setTimeout(() => {
-      try {
-        const result = ParallelLife.simulate(this.state, this._currentParallelEntry, choiceId);
-        document.querySelector('.simulating-modal')?.closest('.timeline-overlay')?.remove();
-        if (!result.success) { alert(result.message || '平行人生模拟失败'); return; }
-        this._lastParallelResult = result;
-        document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.renderComparison(result.comparison));
-      } catch (e) {
-        console.error('Parallel life simulation error:', e);
-        document.querySelector('.simulating-modal')?.closest('.timeline-overlay')?.remove();
-        alert('平行人生模拟出错：' + e.message);
+    try {
+      const result = this.state.advanceMonth();
+      if (result && result.gameOver) {
+        this.state.gameOverReason = result.gameOver;
+        this.state.phase = GamePhase.GAME_OVER;
       }
-    }, 100);
-  }
-
-  closeComparison() { document.querySelector('.comparison-modal')?.closest('.timeline-overlay')?.remove(); this._lastParallelResult = null; }
-
-  continueFromParallel() {
-    if (!this._lastParallelResult || !this._lastParallelResult.parallelState) { alert('没有可继续的平行人生'); return; }
-    if (!confirm('确定要以B人生继续吗？当前A人生的进度将被替换。')) return;
-    const parallelState = this._lastParallelResult.parallelState;
-    this.state.player = parallelState.player;
-    this.state.causalEngine = parallelState.causalEngine;
-    this.state.lifeTimeline = parallelState.lifeTimeline;
-    this.state.phase = GamePhase.PLAYING;
-    this.state.currentMonth = parallelState.currentMonth;
-    this.state.currentYear = parallelState.currentYear;
-    this.state.totalMonthsPlayed = parallelState.totalMonthsPlayed;
-    this.state.relationshipManager = parallelState.relationshipManager;
-    this.state.propertyManager = parallelState.propertyManager;
-    this.state.activeParallelBranchId = parallelState.activeParallelBranchId || this._lastParallelResult.branchId || null;
-    if (this.state.player) this.state.player._v1CausalEngine = this.state.causalEngine || null;
-    this.closeComparison(); this.state.save(); this.render();
-    alert('🔀 你已进入平行人生！');
+      // 自动存档（容错：存档失败不影响游戏继续）
+      try { this.state.save(); } catch (e) { console.error('save failed:', e); }
+    } catch (e) {
+      console.error('advanceMonth failed:', e);
+      // 确保phase回到PLAYING，避免卡在EVENT等中间状态
+      if (this.state.phase === GamePhase.EVENT || this.state.phase === GamePhase.YEAR_REVIEW) {
+        this.state.phase = GamePhase.PLAYING;
+      }
+    }
+    this.render();
   }
 
   showSkillTree() { this.state.phase = GamePhase.SKILL_TREE; this.render(); }
@@ -121,7 +104,10 @@ class Game {
 
   showMoreMenu() {
     const overlay = document.createElement('div'); overlay.className = 'more-menu-overlay';
-    overlay.innerHTML = `<div class="more-menu-modal"><div class="more-menu-title">更多功能</div><button class="more-menu-item" onclick="game.showRelationships(); document.querySelector('.more-menu-overlay').remove();"><span class="more-menu-icon">👥</span><span>人际关系</span></button><button class="more-menu-item" onclick="game.showProperty(); document.querySelector('.more-menu-overlay').remove();"><span class="more-menu-icon">🏠</span><span>房产</span></button><button class="more-menu-close" onclick="document.querySelector('.more-menu-overlay').remove();"><span>取消</span></button></div>`;
+    overlay.innerHTML = `<div class="more-menu-modal"><div class="more-menu-title">更多功能</div>
+      <button class="more-menu-item" onclick="game.showRelationships(); document.querySelector('.more-menu-overlay').remove();"><span class="more-menu-icon">👥</span><span>人际关系</span></button>
+      <button class="more-menu-item" onclick="game.showProperty(); document.querySelector('.more-menu-overlay').remove();"><span class="more-menu-icon">🏠</span><span>房产</span></button>
+      <button class="more-menu-close" onclick="document.querySelector('.more-menu-overlay').remove();"><span>取消</span></button></div>`;
     document.body.appendChild(overlay);
   }
 
@@ -143,6 +129,94 @@ class Game {
   continueAfterYearReview() { this.state.phase=GamePhase.PLAYING; this.render(); }
   continueAfterLastGameReview() { this.state.continueAfterLastGameReview(); this.render(); }
   restart() { this.state.clearSave(); this.state.phase=GamePhase.SCENARIO_SELECT; this.state.player=null; this.render(); }
+
+  // ===== 时间线 v1 =====
+  showTimeline() {
+    if (!this.state.player || typeof LifeTimelineUI === 'undefined') return;
+    const existing = document.querySelector('.timeline-overlay');
+    if (existing) return;
+    document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.render(this.state));
+  }
+  closeTimeline() { const overlay = document.querySelector('.timeline-overlay'); if (overlay) overlay.remove(); }
+
+  // ===== 平行人生 v1.1 =====
+  showParallelChoices(entryIndex) {
+    if (!this.state.lifeTimeline || typeof LifeTimelineUI === 'undefined') return;
+    const entries = this.state.lifeTimeline.getMajorMoments().slice().reverse();
+    const entry = entries[entryIndex];
+    if (!entry) return;
+    this._currentParallelEntry = entry;
+    this.closeTimeline();
+    document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.renderParallelChoices(this.state, entry));
+  }
+
+  closeParallelChoices() {
+    const overlay = document.querySelector('.parallel-modal')?.closest('.timeline-overlay');
+    if (overlay) overlay.remove();
+    if (this.state.player && typeof LifeTimelineUI !== 'undefined') {
+      document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.render(this.state));
+    }
+  }
+
+  startParallelLife(timelineId, choiceId) {
+    if (typeof ParallelLife === 'undefined' || !this._currentParallelEntry) {
+      alert('平行人生功能未加载');
+      return;
+    }
+    this.closeParallelChoices();
+    document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.renderSimulating());
+
+    setTimeout(() => {
+      try {
+        const result = ParallelLife.simulate(this.state, this._currentParallelEntry, choiceId);
+        const simOverlay = document.querySelector('.simulating-modal')?.closest('.timeline-overlay');
+        if (simOverlay) simOverlay.remove();
+
+        if (!result.success) {
+          alert(result.message || '平行人生模拟失败');
+          return;
+        }
+
+        this._lastParallelResult = result;
+        document.body.insertAdjacentHTML('beforeend', LifeTimelineUI.renderComparison(result.comparison));
+      } catch (e) {
+        console.error('Parallel life simulation error:', e);
+        const simOverlay = document.querySelector('.simulating-modal')?.closest('.timeline-overlay');
+        if (simOverlay) simOverlay.remove();
+        alert('平行人生模拟出错：' + e.message);
+      }
+    }, 100);
+  }
+
+  closeComparison() {
+    const overlay = document.querySelector('.comparison-modal')?.closest('.timeline-overlay');
+    if (overlay) overlay.remove();
+    this._lastParallelResult = null;
+  }
+
+  continueFromParallel() {
+    if (!this._lastParallelResult || !this._lastParallelResult.parallelState) {
+      alert('没有可继续的平行人生');
+      return;
+    }
+    if (!confirm('确定要以B人生继续吗？当前A人生的进度将被替换。')) return;
+
+    const parallelState = this._lastParallelResult.parallelState;
+    this.state.player = parallelState.player;
+    this.state.causalEngine = parallelState.causalEngine;
+    this.state.lifeTimeline = parallelState.lifeTimeline;
+    this.state.phase = GamePhase.PLAYING;
+    this.state.currentMonth = parallelState.currentMonth;
+    this.state.currentYear = parallelState.currentYear;
+    this.state.totalMonthsPlayed = parallelState.totalMonthsPlayed;
+    this.state.relationshipManager = parallelState.relationshipManager;
+    this.state.propertyManager = parallelState.propertyManager;
+
+    this.closeComparison();
+    this.state.save();
+    this.render();
+    alert('🔀 你已进入平行人生！');
+  }
 }
 
 document.addEventListener('DOMContentLoaded',function(){game=new Game();window.game=game;game.init();});
