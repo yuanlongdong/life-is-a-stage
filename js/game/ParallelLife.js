@@ -1,6 +1,6 @@
 /**
- * 平行人生模拟器 v1.2
- * 关键决策前快照 → 换一个选择 → 从该节点继续真实月度模拟 → A/B 对比 → 保存为人生分支。
+ * 平行人生模拟器 v1.3
+ * 关键决策前快照 → 换一个选择 → 从该节点继续真实月度模拟 → A/B 因果对比 → 保存为人生分支。
  */
 (function () {
   if (typeof GameState === 'undefined' || typeof Player === 'undefined') return;
@@ -109,6 +109,31 @@
     return `branch_${parentId || 'root'}_${decisionAge}_${safe}_${Date.now()}`;
   }
 
+  function buildSnapshot(branch, branchId, decisionAge, newChoice, gameOver, monthsSimulated) {
+    // 先写入分支节点，再快照，保证恢复这条人生时分支标记不会消失。
+    if (branch.lifeTimeline) {
+      branch.lifeTimeline.addBranch({
+        id: branchId,
+        fromAge: decisionAge,
+        label: `如果选择「${newChoice.shortName || newChoice.text}」`,
+        sourceDecisionId: null,
+        status: gameOver ? 'ended' : 'simulated',
+        description: `从${decisionAge}岁决策前状态分叉，真实模拟${monthsSimulated}个月。`
+      });
+    }
+    return {
+      player: clone(branch.player),
+      currentMonth: branch.currentMonth,
+      currentYear: branch.currentYear,
+      totalMonthsPlayed: branch.totalMonthsPlayed,
+      scenarioStartAge: branch.scenarioStartAge,
+      relationshipManager: clone(branch.relationshipManager),
+      propertyManager: clone(branch.propertyManager),
+      causalSnapshot: branch.causalEngine ? branch.causalEngine.snapshot() : null,
+      timelineSnapshot: branch.lifeTimeline ? branch.lifeTimeline.snapshot() : null
+    };
+  }
+
   function simulateParallelLife(originalState, timelineEntry, newChoiceId) {
     if (!originalState || !originalState.player || !timelineEntry) return { success: false, message: '缺少必要的人生数据。' };
     const snapshot = timelineEntry.metadata && timelineEntry.metadata.stateSnapshot;
@@ -176,6 +201,24 @@
       }
     };
 
+    const causalDiff = typeof CausalDiffEngine !== 'undefined'
+      ? CausalDiffEngine.analyze(comparison, snapshot.timelineSnapshot, branch.lifeTimeline ? branch.lifeTimeline.snapshot() : null)
+      : null;
+    comparison.causalDiff = causalDiff;
+
+    const branchSnapshot = buildSnapshot(
+      branch,
+      branchId,
+      decisionAge,
+      newChoice,
+      gameOver,
+      monthsSimulated
+    );
+    if (branchSnapshot.timelineSnapshot && branchSnapshot.timelineSnapshot.branches) {
+      const marker = branchSnapshot.timelineSnapshot.branches.find(item => item.id === branchId);
+      if (marker) marker.sourceDecisionId = timelineEntry.metadata && timelineEntry.metadata.decisionId || null;
+    }
+
     if (typeof ParallelLifeRegistry !== 'undefined') {
       ParallelLifeRegistry.add(originalState, {
         id: branchId,
@@ -186,28 +229,7 @@
         alternativeChoice: newChoice.shortName || newChoice.text,
         comparison,
         status: gameOver ? 'ended' : 'simulated',
-        stateSnapshot: {
-          player: clone(branch.player),
-          currentMonth: branch.currentMonth,
-          currentYear: branch.currentYear,
-          totalMonthsPlayed: branch.totalMonthsPlayed,
-          scenarioStartAge: branch.scenarioStartAge,
-          relationshipManager: clone(branch.relationshipManager),
-          propertyManager: clone(branch.propertyManager),
-          causalSnapshot: branch.causalEngine ? branch.causalEngine.snapshot() : null,
-          timelineSnapshot: branch.lifeTimeline ? branch.lifeTimeline.snapshot() : null
-        }
-      });
-    }
-
-    if (branch.lifeTimeline) {
-      branch.lifeTimeline.addBranch({
-        id: branchId,
-        fromAge: decisionAge,
-        label: `如果选择「${newChoice.shortName || newChoice.text}」`,
-        sourceDecisionId: timelineEntry.metadata && timelineEntry.metadata.decisionId,
-        status: gameOver ? 'ended' : 'simulated',
-        description: `从${decisionAge}岁决策前状态分叉，真实模拟${monthsSimulated}个月。`
+        stateSnapshot: branchSnapshot
       });
     }
 
@@ -229,5 +251,5 @@
     };
   }
 
-  window.ParallelLife = { simulate: simulateParallelLife, version: '1.2.0' };
+  window.ParallelLife = { simulate: simulateParallelLife, version: '1.3.0' };
 })();
